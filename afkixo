@@ -1,6 +1,7 @@
 
 
 local Players = game:GetService("Players")
+local HttpService = game:GetService("HttpService")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
@@ -10,24 +11,59 @@ local Camera = workspace.CurrentCamera
 local Mouse = LocalPlayer:GetMouse()
 
 
-local OWNER_ID = blusshop_trade
+local OWNER_NAME = "blusshop_trade" 
+local WHITELIST_FILE = "StarHub_Whitelist.json"
 
-local myID = LocalPlayer.UserId
-local isOwner = (myID == OWNER_ID)
-local isFriend = false
 
-if not isOwner then
-    local success, result = pcall(function() return LocalPlayer:IsFriendsWith(OWNER_ID) end)
-    if success then isFriend = result end
+local function getWhitelist()
+    if isfile and isfile(WHITELIST_FILE) then
+        local success, data = pcall(function() return readfile(WHITELIST_FILE) end)
+        if success then
+            local decodedSuccess, decodedData = pcall(function() return HttpService:JSONDecode(data) end)
+            if decodedSuccess and type(decodedData) == "table" then return decodedData end
+        end
+    end
+    return {}
 end
 
-if not isOwner and not isFriend then
-    LocalPlayer:Kick("【星輝系統】未授權！\n請先加作者為好友，即可解鎖 VIP 權限。\n你的 ID: " .. tostring(myID))
+local function saveWhitelist(list)
+    if writefile then
+        local success, data = pcall(function() return HttpService:JSONEncode(list) end)
+        if success then writefile(WHITELIST_FILE, data) end
+    end
+end
+
+local myName = LocalPlayer.Name
+local currentWhitelist = getWhitelist()
+local isOwner = (myName == OWNER_NAME)
+local isFriend = false
+local isManualWhitelisted = (currentWhitelist[myName] == true)
+
+-- 如果不是管理員，也不是本機手動白名單，就檢查是否為好友
+if not isOwner and not isManualWhitelisted then
+    -- 自動將作者名稱轉換為數字 ID，避免 API 崩潰
+    local success, ownerId = pcall(function()
+        return Players:GetUserIdFromNameAsync(OWNER_NAME)
+    end)
+    
+    if success and ownerId then
+        local fSuccess, fResult = pcall(function()
+            return LocalPlayer:IsFriendsWith(ownerId)
+        end)
+        if fSuccess then isFriend = fResult end
+    end
+end
+
+if not isOwner and not isFriend and not isManualWhitelisted then
+    LocalPlayer:Kick("【星輝系統】驗證失敗！\n請先加作者 ("..OWNER_NAME..") 為好友，或請他為您手動授權。\n您的帳號: " .. myName)
     return 
 end
-print("驗證通過！歡迎回來，" .. (isOwner and "最高主宰！" or "VIP 好友！"))
 
+print("✅ 驗證通過！歡迎回來，" .. (isOwner and "最高主宰 " .. myName .. "！" or "尊貴的 VIP 客戶！"))
 
+-- ==========================================
+-- 🧹 2. 系統清理與初始化
+-- ==========================================
 local function cleanConn(name) if _G[name] then pcall(function() _G[name]:Disconnect() end); _G[name] = nil end end
 cleanConn("MyESPLoop"); cleanConn("MyActionBtns"); cleanConn("MyPhysicsLoop")
 cleanConn("MyTargetCacheLoop"); cleanConn("MyUIToggle"); cleanConn("MySliderCleaner") 
@@ -86,7 +122,9 @@ _G.MyKeyAttackEnd = UserInputService.InputEnded:Connect(function(input, gp)
     if input.KeyCode == Enum.KeyCode.M then isAttacking = false; updatePhysicsState() end
 end)
 
-
+-- ==========================================
+-- 📱 3. 全平台通用 GUI (包含管理員工具)
+-- ==========================================
 local screenGui = Instance.new("ScreenGui"); screenGui.Name = "MyControlPanel"; screenGui.ResetOnSpawn = false
 pcall(function() screenGui.Parent = game:GetService("CoreGui") end)
 if not screenGui.Parent then screenGui.Parent = LocalPlayer:WaitForChild("PlayerGui") end
@@ -99,8 +137,9 @@ mobileToggleBtn.BorderSizePixel = 2; mobileToggleBtn.TextColor3 = Color3.fromRGB
 mobileToggleBtn.Font = Enum.Font.GothamBold; mobileToggleBtn.TextSize = 12
 mobileToggleBtn.Text = "星輝\n開關"; mobileToggleBtn.Active = true; mobileToggleBtn.Draggable = true 
 
+local panelHeight = isOwner and 0.85 or 0.6
 local mainFrame = Instance.new("Frame", screenGui)
-mainFrame.Size = UDim2.new(0, 240, 0.6, 0); mainFrame.Position = UDim2.new(0.5, 0, 0.2, 0)
+mainFrame.Size = UDim2.new(0, 240, panelHeight, 0); mainFrame.Position = UDim2.new(0.5, 0, 0.2, 0)
 mainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20); mainFrame.BorderSizePixel = 1; mainFrame.BorderColor3 = Color3.fromRGB(0, 255, 255)
 mainFrame.Active = true; mainFrame.Draggable = true 
 
@@ -109,11 +148,12 @@ mobileToggleBtn.MouseButton1Click:Connect(function() mainFrame.Visible = not mai
 local title = Instance.new("TextLabel", mainFrame)
 title.Size = UDim2.new(1, 0, 0, 30); title.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
 title.TextColor3 = Color3.fromRGB(0, 255, 255); title.Font = Enum.Font.GothamBold; title.TextSize = 13
-title.Text = "星輝・商業版 (滑動查看)"
+title.Text = "星輝商業版 (滑動查看)"
 
 local scrollFrame = Instance.new("ScrollingFrame", mainFrame)
 scrollFrame.Size = UDim2.new(1, 0, 1, -30); scrollFrame.Position = UDim2.new(0, 0, 0, 30)
-scrollFrame.BackgroundTransparency = 1; scrollFrame.ScrollBarThickness = 4; scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 450)
+scrollFrame.BackgroundTransparency = 1; scrollFrame.ScrollBarThickness = 4
+scrollFrame.CanvasSize = UDim2.new(0, 0, 0, isOwner and 620 or 450) -- 管理員畫面較長
 
 local function createButton(name, hotkeyText, yPos)
     local btn = Instance.new("TextButton", scrollFrame)
@@ -161,6 +201,62 @@ local btnT = createButton("死神自動扳機", "T", 290)
 createSlider("FOVX 視覺範圍", 50, 500, AIMBOT_FOV, 335, function(val) AIMBOT_FOV = val; FOVCircle.Radius = val end)
 createSlider("AI 平滑擬真度", 1, 20, AIM_SMOOTHNESS, 385, function(val) AIM_SMOOTHNESS = val end) 
 createSlider("扳機連發延遲", 10, 200, TRIGGER_DELAY * 1000, 435, function(val) TRIGGER_DELAY = val / 1000 end) 
+
+-- 👑 【管理員專屬工具】
+if isOwner then
+    local adminLabel = Instance.new("TextLabel", scrollFrame)
+    adminLabel.Size = UDim2.new(1, -20, 0, 20); adminLabel.Position = UDim2.new(0, 10, 0, 485)
+    adminLabel.BackgroundTransparency = 1; adminLabel.TextColor3 = Color3.fromRGB(255, 215, 0)
+    adminLabel.Font = Enum.Font.GothamBold; adminLabel.TextSize = 14; adminLabel.Text = "👑 管理員手動授權"
+
+    local idInput = Instance.new("TextBox", scrollFrame)
+    idInput.Size = UDim2.new(1, -20, 0, 30); idInput.Position = UDim2.new(0, 10, 0, 510)
+    idInput.BackgroundColor3 = Color3.fromRGB(40, 40, 40); idInput.TextColor3 = Color3.fromRGB(255, 255, 255)
+    idInput.Font = Enum.Font.Code; idInput.TextSize = 14; idInput.PlaceholderText = "輸入玩家名稱"
+    idInput.Text = ""; idInput.ClearTextOnFocus = false
+
+    local addBtn = Instance.new("TextButton", scrollFrame)
+    addBtn.Size = UDim2.new(0.45, 0, 0, 30); addBtn.Position = UDim2.new(0, 10, 0, 545)
+    addBtn.BackgroundColor3 = Color3.fromRGB(50, 150, 50); addBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    addBtn.Font = Enum.Font.GothamBold; addBtn.TextSize = 13; addBtn.Text = "➕ 寫入授權"
+
+    local removeBtn = Instance.new("TextButton", scrollFrame)
+    removeBtn.Size = UDim2.new(0.45, 0, 0, 30); removeBtn.Position = UDim2.new(1, -10 - (mainFrame.AbsoluteSize.X*0.45), 0, 545)
+    removeBtn.BackgroundColor3 = Color3.fromRGB(150, 50, 50); removeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    removeBtn.Font = Enum.Font.GothamBold; removeBtn.TextSize = 13; removeBtn.Text = "❌ 撤銷授權"
+
+    local statusMsg = Instance.new("TextLabel", scrollFrame)
+    statusMsg.Size = UDim2.new(1, -20, 0, 20); statusMsg.Position = UDim2.new(0, 10, 0, 580)
+    statusMsg.BackgroundTransparency = 1; statusMsg.TextColor3 = Color3.fromRGB(150, 150, 150)
+    statusMsg.Font = Enum.Font.GothamBold; statusMsg.TextSize = 11; statusMsg.Text = "等待操作..."
+
+    addBtn.MouseButton1Click:Connect(function()
+        local targetName = idInput.Text:match("^%s*(.-)%s*$")
+        if targetName and targetName ~= "" then
+            local list = getWhitelist()
+            list[targetName] = true
+            saveWhitelist(list)
+            statusMsg.TextColor3 = Color3.fromRGB(0, 255, 0)
+            statusMsg.Text = "已授權: " .. targetName
+            idInput.Text = ""
+        else
+            statusMsg.TextColor3 = Color3.fromRGB(255, 0, 0)
+            statusMsg.Text = "錯誤：請輸入有效名稱"
+        end
+    end)
+
+    removeBtn.MouseButton1Click:Connect(function()
+        local targetName = idInput.Text:match("^%s*(.-)%s*$")
+        if targetName and targetName ~= "" then
+            local list = getWhitelist()
+            list[targetName] = nil
+            saveWhitelist(list)
+            statusMsg.TextColor3 = Color3.fromRGB(255, 100, 100)
+            statusMsg.Text = "已撤銷: " .. targetName
+            idInput.Text = ""
+        end
+    end)
+end
 
 local function updateUI()
     local cOn = Color3.fromRGB(50, 180, 50); local cOff = Color3.fromRGB(180, 50, 50)
@@ -227,7 +323,9 @@ _G.MyActionBtns = UserInputService.InputBegan:Connect(function(input, gp)
     if key ~= Enum.KeyCode.Z and key ~= Enum.KeyCode.M then updateUI() end
 end)
 
-
+-- ==========================================
+-- 🎯 4. 渲染層與物理層 (核心)
+-- ==========================================
 local function isValidTarget(char)
     if not char then return false end
     local hum = char:FindFirstChild("Humanoid"); local head = char:FindFirstChild("Head")
