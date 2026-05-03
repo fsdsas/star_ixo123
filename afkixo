@@ -1,7 +1,4 @@
--- ==========================================================
--- 🌌 星輝商業發行版 (The Dimension Hub - Premium)
--- 包含：好友白名單驗證、全平台 UI、合法自瞄、空間神技
--- ==========================================================
+
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -12,12 +9,9 @@ local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 local Mouse = LocalPlayer:GetMouse()
 
--- 👑 【核心設定：最高管理員 ID】
-local OWNER_ID = 12345678 -- 🔥🔥🔥 在發布前，務必將這裡改成你的 Roblox ID 🔥🔥🔥
 
--- ==========================================
--- 🔐 1. 雲端社交驗證系統 (加好友解鎖)
--- ==========================================
+local OWNER_ID = blusshop_trade
+
 local myID = LocalPlayer.UserId
 local isOwner = (myID == OWNER_ID)
 local isFriend = false
@@ -31,11 +25,9 @@ if not isOwner and not isFriend then
     LocalPlayer:Kick("【星輝系統】未授權！\n請先加作者為好友，即可解鎖 VIP 權限。\n你的 ID: " .. tostring(myID))
     return 
 end
-print("✅ 驗證通過！歡迎回來，" .. (isOwner and "最高主宰！" or "VIP 好友！"))
+print("驗證通過！歡迎回來，" .. (isOwner and "最高主宰！" or "VIP 好友！"))
 
--- ==========================================
--- 🧹 2. 系統清理與初始化
--- ==========================================
+
 local function cleanConn(name) if _G[name] then pcall(function() _G[name]:Disconnect() end); _G[name] = nil end end
 cleanConn("MyESPLoop"); cleanConn("MyActionBtns"); cleanConn("MyPhysicsLoop")
 cleanConn("MyTargetCacheLoop"); cleanConn("MyUIToggle"); cleanConn("MySliderCleaner") 
@@ -94,9 +86,7 @@ _G.MyKeyAttackEnd = UserInputService.InputEnded:Connect(function(input, gp)
     if input.KeyCode == Enum.KeyCode.M then isAttacking = false; updatePhysicsState() end
 end)
 
--- ==========================================
--- 📱 3. 全平台通用 GUI (支援手機滑動)
--- ==========================================
+
 local screenGui = Instance.new("ScreenGui"); screenGui.Name = "MyControlPanel"; screenGui.ResetOnSpawn = false
 pcall(function() screenGui.Parent = game:GetService("CoreGui") end)
 if not screenGui.Parent then screenGui.Parent = LocalPlayer:WaitForChild("PlayerGui") end
@@ -237,9 +227,7 @@ _G.MyActionBtns = UserInputService.InputBegan:Connect(function(input, gp)
     if key ~= Enum.KeyCode.Z and key ~= Enum.KeyCode.M then updateUI() end
 end)
 
--- ==========================================
--- 🎯 4. 渲染層與物理層 (核心)
--- ==========================================
+
 local function isValidTarget(char)
     if not char then return false end
     local hum = char:FindFirstChild("Humanoid"); local head = char:FindFirstChild("Head")
