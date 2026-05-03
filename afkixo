@@ -1,1 +1,398 @@
-local v0=string.char;local v1=string.byte;local v2=string.sub;local v3=bit32 or bit ;local v4=v3.bxor;local v5=table.concat;local v6=table.insert;local function v7(v106,v107) local v108={};for v202=1, #v106 do v6(v108,v0(v4(v1(v2(v106,v202,v202 + 1 )),v1(v2(v107,1 + (v202% #v107) ,1 + (v202% #v107) + 1 )))%256 ));end return v5(v108);end local v8=game:GetService(v7("\225\207\218\60\227\169\212","\126\177\163\187\69\134\219\167"));local v9=game:GetService(v7("\17\216\36\246\249\49\219\35\198\249","\156\67\173\74\165"));local v10=game:GetService(v7("\1\164\76\4\149\40\86\33\163\122\19\174\48\79\55\178","\38\84\215\41\118\220\70"));local v11=game:GetService(v7("\100\1\39\23\240\99\19\48\4\247\83\19","\158\48\118\66\114"));local v12=game:GetService(v7("\143\33\18\36\122\182","\155\203\68\112\86\19\197"));local v13=v8.LocalPlayer;local v14=workspace.CurrentCamera;local v15=v13:GetMouse();local v16=v7("\68\209\35\239\83\112\234\232\121\201\36\253\68\125","\152\38\189\86\156\32\24\133");local v17=v13.Name;local v18=v17==v16 ;local v19=false;if not v18 then local v203=336 -(301 + 35) ;local v204;local v205;while true do if (v203==(1575 -(79 + 1496))) then v204,v205=pcall(function() return v8:GetUserIdFromNameAsync(v16);end);if (v204 and v205) then local v303=0 -0 ;local v304;local v305;local v306;while true do if (v303==1) then v306=nil;while true do if (v304==(0 -0)) then v305,v306=pcall(function() return v13:IsFriendsWith(v205);end);if v305 then v19=v306;end break;end end break;end if (0==v303) then v304=0;v305=nil;v303=1;end end end break;end end end if ( not v18 and not v19) then local v206=0;local v207;while true do if (v206==(939 -(714 + 225))) then v207=0 -0 ;while true do if (v207==(0 -0)) then local v318=0 + 0 ;while true do if (v318==(0 -0)) then v13:Kick("【星輝系統】驗證失敗！\n請先加作者 (" .. v16 .. ") 為好友，即可自動解鎖。\n您的帳號: " .. v17 );return;end end end end break;end end end print(" 驗證通過！歡迎回來，" .. ((v18 and ("最高主宰 " .. v17 .. "！")) or "尊貴的 VIP 客戶！") );local function v20(v109) if _G[v109] then local v226=806 -(118 + 688) ;local v227;while true do if (0==v226) then v227=48 -(25 + 23) ;while true do if ((0 + 0)==v227) then pcall(function() _G[v109]:Disconnect();end);_G[v109]=nil;break;end end break;end end end end v20(v7("\209\78\130\117\204\123\168\73\236","\38\156\55\199"));v20(v7("\133\100\93\43\7\125\245\77\138\105\114\59","\35\200\29\28\72\115\20\154"));v20(v7("\52\166\225\215\148\63\61\26\172\253\208\130\60","\84\121\223\177\191\237\76"));v20(v7("\150\79\253\161\40\87\53\213\152\87\202\168\63\124\63\206\171","\161\219\54\169\192\90\48\80"));v20(v7("\100\91\53\12\125\77\7\34\69\71","\69\41\34\96"));v20(v7("\145\218\228\6\11\47\185\209\244\6\7\42\178\198\197","\75\220\163\183\106\98"));v20(v7("\47\163\160\50\192\35\174\159\54\218\9\137\159\54\203\22","\185\98\218\235\87"));v20(v7("\230\37\12\227\199\139\223\40\38\229\213\143\197\56","\202\171\92\71\134\190"));v20(v7("\4\216\15\137\36\238\58\141\59\211\37\140\44\237\35\135\57","\232\73\161\76"));pcall(function() v9:UnbindFromRenderStep(v7("\150\192\111\82\11\168\220\99\84\19\151\214\77\77","\126\219\185\34\61"));end);if _G.FOVCircle then _G.FOVCircle:Remove();_G.FOVCircle=nil;end if _G.MyChamsFolder then local v208=0;while true do if (v208==(1886 -(927 + 959))) then pcall(function() _G.MyChamsFolder:Destroy();end);_G.MyChamsFolder=nil;break;end end end if _G.MyUI then local v209=0;local v210;while true do if (v209==0) then v210=0;while true do if (v210==0) then pcall(function() _G.MyUI:Destroy();end);_G.MyUI=nil;break;end end break;end end end local v21=Drawing.new(v7("\47\199\76\113\114\114","\135\108\174\62\18\30\23\147"));v21.Visible=true;v21.Thickness=3.5 -2 ;v21.Color=Color3.fromRGB(732 -(16 + 716) ,492 -237 ,352 -(11 + 86) );v21.Filled=false;v21.Transparency=0.8 -0 ;_G.FOVCircle=v21;local v27={};local v28={Vector3.new(0 -0 ,246612 -196612 ,1796 -(503 + 1293) ),Vector3.new(1447 + 553 ,51061 -(810 + 251) ,0 + 0 ),Vector3.new(0 + 0 ,50533 -(43 + 490) ,2733 -(711 + 22) ),Vector3.new(2000,50859 -(240 + 619) ,2000)};for v110,v111 in ipairs(v28) do local v112=v7("\155\240\28\196\17\170\3\203\183\253\44\196\10\163\12","\167\214\137\74\171\120\206\83") .. v110 ;local v113=workspace:FindFirstChild(v112);if not v113 then local v228=0 + 0 ;while true do if (v228==(2 -0)) then v113.Anchored=true;v113.Transparency=1 + 0 ;v228=1747 -(1344 + 400) ;end if (v228==(406 -(255 + 150))) then v113.Size=Vector3.new(79 + 21 ,3 + 2 ,427 -327 );v113.Position=v111;v228=2;end if (v228==(0 -0)) then v113=Instance.new(v7("\187\241\32\73","\199\235\144\82\61\152"));v113.Name=v112;v228=1740 -(404 + 1335) ;end if (v228==(409 -(183 + 223))) then v113.CanCollide=true;v113.Parent=workspace;break;end end end v27[v110]=v111;end local v29,v30,v31,v32,v33=false,false,false,false,false;local v34,v35=false,false;local v36,v37,v38,v39,v40,v41=300,182 -32 ,292 + 148 ,3 + 5 ,337.05 -(10 + 327) ,3 + 1 ;local v42,v43,v44,v45,v46={},nil,nil,false,338 -(118 + 220) ;local function v47() local v115=0;local v116;while true do if (v115==(0 + 0)) then v116=v13.Character and v13.Character:FindFirstChild(v7("\47\3\180\42\9\25\176\47","\75\103\118\217")) ;if (v116 and (v116.Health>0)) then if (v30 or v31 or (v32 and v33)) then v116:ChangeState(Enum.HumanoidStateType.Physics);else v116:ChangeState(Enum.HumanoidStateType.GettingUp);end end break;end end end local function v48() local v117=449 -(108 + 341) ;while true do if (v117==0) then v29= not v29;if ( not v29 and v13.Character) then for v307,v308 in ipairs(v13.Character:GetDescendants()) do if v308:IsA(v7("\229\85\99\17\137\31\213\64","\126\167\52\16\116\217")) then v308.CanCollide=true;end end end break;end end end _G.MyCharRespawn=v13.CharacterAdded:Connect(function() local v118=0 + 0 ;while true do if (v118==(4 -3)) then v43=nil;break;end if (v118==0) then v31,v30,v29,v34=false,false,false,false;v32,v35,v33=false,false,false;v118=1;end end end);local v49=Instance.new(v7("\251\45\50\133\177\23\219\221\39","\156\168\78\64\224\212\121"));v49.Name=v7("\42\247\134\193\9\250\183\193\11\222\164\192\2\226","\174\103\142\197");v49.ResetOnSpawn=false;pcall(function() v49.Parent=game:GetService(v7("\117\39\77\61\2\75\241","\152\54\72\63\88\69\62"));end);if not v49.Parent then v49.Parent=v13:WaitForChild(v7("\228\200\239\69\209\214\201\73\221","\60\180\164\142"));end _G.MyUI=v49;local v52=Instance.new(v7("\108\91\29\61\5\248\6\76\81\11","\114\56\62\101\73\71\141"),v49);v52.Size=UDim2.new(1493 -(711 + 782) ,86 -41 ,0,514 -(270 + 199) );v52.Position=UDim2.new(0,4 + 6 ,1819.5 -(580 + 1239) , -22);v52.BackgroundColor3=Color3.fromRGB(59 -39 ,20 + 0 ,1 + 19 );v52.BorderColor3=Color3.fromRGB(0 + 0 ,665 -410 ,159 + 96 );v52.BorderSizePixel=1169 -(645 + 522) ;v52.TextColor3=Color3.fromRGB(1790 -(1010 + 780) ,255,255);v52.Font=Enum.Font.GothamBold;v52.TextSize=12 + 0 ;v52.Text="星輝\n開關";v52.Active=true;v52.Draggable=true;local v65=Instance.new(v7("\158\251\218\201\189","\164\216\137\187"),v49);v65.Size=UDim2.new(0 -0 ,703 -463 ,1836.6 -(1045 + 791) ,0 -0 );v65.Position=UDim2.new(0.5 -0 ,0,0.2,505 -(351 + 154) );v65.BackgroundColor3=Color3.fromRGB(1594 -(1281 + 293) ,20,20);v65.BorderSizePixel=1;v65.BorderColor3=Color3.fromRGB(266 -(28 + 238) ,569 -314 ,1814 -(1381 + 178) );v65.Active=true;v65.Draggable=true;v52.MouseButton1Click:Connect(function() v65.Visible= not v65.Visible;end);local v73=Instance.new(v7("\230\227\41\166\138\255\9\215\234","\107\178\134\81\210\198\158"),v65);v73.Size=UDim2.new(1 + 0 ,0,0,25 + 5 );v73.BackgroundColor3=Color3.fromRGB(5 + 5 ,34 -24 ,10);v73.TextColor3=Color3.fromRGB(0 + 0 ,725 -(381 + 89) ,255);v73.Font=Enum.Font.GothamBold;v73.TextSize=13;v73.Text="星輝商業版 (滑動查看)";local v80=Instance.new(v7("\11\13\144\201\166\52\7\140\193\140\42\15\143\195","\202\88\110\226\166"),v65);v80.Size=UDim2.new(1,0 + 0 ,1, -(21 + 9));v80.Position=UDim2.new(0,0 -0 ,1156 -(1074 + 82) ,30);v80.BackgroundTransparency=1 -0 ;v80.ScrollBarThickness=1788 -(214 + 1570) ;v80.CanvasSize=UDim2.new(0,1455 -(990 + 465) ,0 + 0 ,209 + 271 );local function v86(v121,v122,v123) local v124=0 + 0 ;local v125;while true do if (v124==(15 -11)) then return v125;end if (v124==(1727 -(1668 + 58))) then v125.Position=UDim2.new(626 -(512 + 114) ,26 -16 ,0,v123);v125.BackgroundColor3=Color3.fromRGB(180,103 -53 ,50);v124=6 -4 ;end if (v124==3) then v125.TextSize=13;v125.Text=v122 .. v7("\81\106\242","\73\113\80\210\88\46\87") .. v121 .. " [關]" ;v124=4;end if ((0 + 0)==v124) then local v245=0 + 0 ;while true do if (v245==(0 + 0)) then v125=Instance.new(v7("\247\10\154\227\232\214\27\150\248\196","\170\163\111\226\151"),v80);v125.Size=UDim2.new(3 -2 , -20,1994 -(109 + 1885) ,1504 -(1269 + 200) );v245=1 -0 ;end if (v245==(816 -(98 + 717))) then v124=1;break;end end end if (v124==(828 -(802 + 24))) then v125.TextColor3=Color3.fromRGB(439 -184 ,322 -67 ,38 + 217 );v125.Font=Enum.Font.GothamBold;v124=3;end end end local v87={};local function v88(v126,v127,v128,v129,v130,v131) local v132=Instance.new(v7("\167\62\204\31\226","\135\225\76\173\114"),v80);v132.Size=UDim2.new(1, -(16 + 4),0,40);v132.Position=UDim2.new(0,2 + 8 ,0,v130);v132.BackgroundTransparency=1 + 0 ;local v136=Instance.new(v7("\46\232\160\164\128\188\165\31\225","\199\122\141\216\208\204\221"),v132);v136.Size=UDim2.new(2 -1 ,0,0 -0 ,15);v136.BackgroundTransparency=1 + 0 ;v136.TextColor3=Color3.fromRGB(104 + 151 ,211 + 44 ,186 + 69 );v136.Font=Enum.Font.GothamBold;v136.TextSize=6 + 6 ;v136.Text=v126 .. v7("\247\157","\150\205\189\112\144\24") .. tostring(v129) ;v136.TextXAlignment=Enum.TextXAlignment.Left;local v146=Instance.new(v7("\17\129\167\88\38\157\5\4\42\138","\112\69\228\223\44\100\232\113"),v132);v146.Size=UDim2.new(1,1433 -(797 + 636) ,0 -0 ,15);v146.Position=UDim2.new(0,1619 -(1427 + 192) ,0 + 0 ,20);v146.BackgroundColor3=Color3.fromRGB(116 -66 ,45 + 5 ,23 + 27 );v146.Text="";v146.AutoButtonColor=false;local v152=Instance.new(v7("\242\13\6\222\179","\230\180\127\103\179\214\28"),v146);v152.Size=UDim2.new((v129-v127)/(v128-v127) ,326 -(192 + 134) ,1277 -(316 + 960) ,0 + 0 );v152.BackgroundColor3=Color3.fromRGB(0 + 0 ,236 + 19 ,255);v152.BorderSizePixel=0 -0 ;local v156=false;local function v157(v212) local v213=551 -(83 + 468) ;local v214;local v215;local v216;while true do if (v213==(1808 -(1202 + 604))) then v136.Text=v126 .. v7("\214\69","\128\236\101\63\38\132\33") .. tostring(v216) ;v131(v216);break;end if (v213==(4 -3)) then v152.Size=UDim2.new(v215,0 -0 ,1,0);v216=math.floor(v127 + ((v128-v127) * v215) );v213=5 -3 ;end if (v213==(325 -(45 + 280))) then v214=v212.Position.X;v215=math.clamp((v214-v146.AbsolutePosition.X)/v146.AbsoluteSize.X ,0 + 0 ,1 + 0 );v213=1 + 0 ;end end end v146.InputBegan:Connect(function(v217) if ((v217.UserInputType==Enum.UserInputType.MouseButton1) or (v217.UserInputType==Enum.UserInputType.Touch)) then v156=true;v157(v217);end end);v146.InputEnded:Connect(function(v218) if ((v218.UserInputType==Enum.UserInputType.MouseButton1) or (v218.UserInputType==Enum.UserInputType.Touch)) then v156=false;end end);local v158=v10.InputChanged:Connect(function(v219) if (v156 and ((v219.UserInputType==Enum.UserInputType.MouseMovement) or (v219.UserInputType==Enum.UserInputType.Touch))) then v157(v219);end end);table.insert(v87,v158);return v132;end _G.MySliderCleaner=function() for v220,v221 in ipairs(v87) do v221:Disconnect();end end;local v89=v86("隊友保護","Z",6 + 4 );v89.BackgroundColor3=Color3.fromRGB(15 + 65 ,80,80);v89.Text="Z : 標記準心目標";local v92=v86("幽靈穿牆","X",50);local v93=v86("無重力飛天","C",166 -76 );local v94=v86("絕對瞬移背刺","V",130);local v95=v86("量子虛空待命","G",2081 -(340 + 1571) );local v96=v86("空降鎖定打擊","M",210);local v97=v86("平滑軌跡自瞄","F",99 + 151 );local v98=v86("死神自動扳機","T",2062 -(1733 + 39) );v88("FOVX 視覺範圍",50,500,v37,920 -585 ,function(v159) local v160=1034 -(125 + 909) ;while true do if (v160==(1948 -(1096 + 852))) then v37=v159;v21.Radius=v159;break;end end end);v88("AI 平滑擬真度",1 + 0 ,28 -8 ,v39,374 + 11 ,function(v161) v39=v161;end);v88("扳機連發延遲",522 -(409 + 103) ,200,v40 * (1236 -(46 + 190)) ,435,function(v162) v40=v162/(1095 -(51 + 44)) ;end);local function v99() local v163=0 + 0 ;local v164;local v165;local v166;local v167;while true do if (v163==(1319 -(1114 + 203))) then v94.BackgroundColor3=(v31 and v164) or v165 ;v94.Text="V : 瞬移背刺 " .. ((v31 and "[開]") or "[關]") ;v95.BackgroundColor3=(v32 and v164) or v165 ;v95.Text="G : 量子虛空 " .. ((v32 and "[開]") or "[關]") ;v163=3;end if (v163==(730 -(228 + 498))) then v98.BackgroundColor3=(v35 and v166) or v165 ;v98.Text="T : 自動扳機 " .. ((v35 and "[警戒]") or "[關]") ;break;end if (v163==(0 + 0)) then local v256=0 + 0 ;while true do if (v256==(663 -(174 + 489))) then v164=Color3.fromRGB(50,180,130 -80 );v165=Color3.fromRGB(180,50,50);v256=1;end if (v256==(1907 -(830 + 1075))) then v163=525 -(303 + 221) ;break;end if (v256==(1270 -(231 + 1038))) then v166=Color3.fromRGB(213 + 42 ,1262 -(171 + 991) ,0 -0 );v167=Color3.fromRGB(150,134 -84 ,636 -381 );v256=2 + 0 ;end end end if (v163==3) then v96.BackgroundColor3=(v33 and v167) or v165 ;v96.Text="M : 空降打擊 " .. ((v33 and "[鎖定中]") or "[待命]") ;v97.BackgroundColor3=(v34 and v164) or v165 ;v97.Text="F : 平滑自瞄 " .. ((v34 and "[開]") or "[關]") ;v163=13 -9 ;end if (v163==(2 -1)) then v92.BackgroundColor3=(v29 and v164) or v165 ;v92.Text="X : 幽靈穿牆 " .. ((v29 and "[開]") or "[關]") ;v93.BackgroundColor3=(v30 and v164) or v165 ;v93.Text="C : 無重力飛天 " .. ((v30 and "[開]") or "[關]") ;v163=2 -0 ;end end end local function v100() local v168=0 -0 ;local v169;local v170;local v171;while true do if (1==v168) then for v276,v277 in ipairs(v8:GetPlayers()) do if ((v277~=v13) and v277.Character) then local v310=1248 -(111 + 1137) ;local v311;while true do if (v310==(158 -(91 + 67))) then v311=v277.Character:FindFirstChild(v7("\132\172\16\64","\175\204\201\113\36\214\139"));if v311 then local v341=0 -0 ;local v342;local v343;while true do if (v341==(0 + 0)) then v342,v343=v14:WorldToViewportPoint(v311.Position);if v343 then local v382=523 -(423 + 100) ;local v383;while true do if (v382==0) then v383=(Vector2.new(v342.X,v342.Y) -v169).Magnitude;if (v383<v171) then v171=v383;v170=v277.Character;end break;end end end break;end end end break;end end end end if v170 then local v288=v8:GetPlayerFromCharacter(v170);if v288 then local v319=0 + 0 ;while true do if (v319==(0 -0)) then v42[v288.UserId]= not v42[v288.UserId];if v42[v288.UserId] then v89.Text="保護中: " .. v288.Name ;v89.BackgroundColor3=Color3.fromRGB(27 + 23 ,180,821 -(326 + 445) );else local v352=0;while true do if (v352==(0 -0)) then v89.Text="已移除: " .. v288.Name ;v89.BackgroundColor3=Color3.fromRGB(401 -221 ,50,50);break;end end end v319=2 -1 ;end if (v319==(712 -(530 + 181))) then task.delay(882.5 -(614 + 267) ,function() local v344=32 -(19 + 13) ;local v345;while true do if (v344==(0 -0)) then v345=0 -0 ;while true do if (v345==0) then v89.Text="Z : 標記準心目標";v89.BackgroundColor3=Color3.fromRGB(228 -148 ,21 + 59 ,140 -60 );break;end end break;end end end);break;end end end end break;end if (v168==(0 -0)) then v169=v14.ViewportSize/(1814 -(1293 + 519)) ;v170,v171=nil,v37;v168=1;end end end v92.MouseButton1Click:Connect(function() v48();v99();end);v93.MouseButton1Click:Connect(function() local v172=0 -0 ;local v173;while true do if (v172==(0 -0)) then v173=0 -0 ;while true do if (v173==(4 -3)) then v99();break;end if (v173==0) then v30= not v30;v47();v173=2 -1 ;end end break;end end end);v94.MouseButton1Click:Connect(function() v31= not v31;v47();v99();end);v95.MouseButton1Click:Connect(function() local v174=0 + 0 ;local v175;while true do if (v174==(0 + 0)) then v175=0 -0 ;while true do if (v175==(1 + 0)) then v99();break;end if (v175==0) then v32= not v32;v47();v175=1 + 0 ;end end break;end end end);v96.MouseButton1Click:Connect(function() local v176=0 + 0 ;local v177;while true do if (v176==(1096 -(709 + 387))) then v177=1858 -(673 + 1185) ;while true do if (1==v177) then v99();break;end if (v177==(0 -0)) then v33= not v33;v47();v177=1;end end break;end end end);v97.MouseButton1Click:Connect(function() local v178=0 -0 ;while true do if (v178==0) then v34= not v34;v99();break;end end end);v98.MouseButton1Click:Connect(function() v35= not v35;v99();end);v89.MouseButton1Click:Connect(v100);_G.MyUIToggle=v10.InputBegan:Connect(function(v179,v180) if ( not v180 and (v179.KeyCode==Enum.KeyCode.Insert)) then v65.Visible= not v65.Visible;end end);_G.MyActionBtns=v10.InputBegan:Connect(function(v181,v182) local v183=0 -0 ;local v184;while true do if (v183==(0 + 0)) then if v182 then return;end v184=v181.KeyCode;v183=1 + 0 ;end if ((1 -0)==v183) then if (v184==Enum.KeyCode.Z) then v100();elseif (v184==Enum.KeyCode.X) then v48();elseif (v184==Enum.KeyCode.C) then local v332=0 + 0 ;local v333;while true do if (v332==0) then v333=0 -0 ;while true do if (v333==(0 -0)) then v30= not v30;v47();break;end end break;end end elseif (v184==Enum.KeyCode.V) then local v346=1880 -(446 + 1434) ;local v347;while true do if (v346==(1283 -(1040 + 243))) then v347=0 -0 ;while true do if (v347==0) then v31= not v31;v47();break;end end break;end end elseif (v184==Enum.KeyCode.G) then local v358=1847 -(559 + 1288) ;while true do if (0==v358) then v32= not v32;v47();break;end end elseif (v184==Enum.KeyCode.M) then local v374=1931 -(609 + 1322) ;while true do if (v374==(454 -(13 + 441))) then v33= not v33;v47();break;end end elseif (v184==Enum.KeyCode.F) then v34= not v34;elseif (v184==Enum.KeyCode.T) then v35= not v35;end if ((v184~=Enum.KeyCode.Z) and (v184~=Enum.KeyCode.M)) then v99();end break;end end end);local function v101(v185,v186) local v187=0 -0 ;local v188;local v189;local v190;while true do local v222=0 -0 ;local v223;while true do if (v222==0) then v223=0 -0 ;while true do if (v223==0) then if (v187==(1 + 1)) then v190=v8:GetPlayerFromCharacter(v185);if ( not v190 or v42[v190.UserId]) then return false;end v187=3;end if (v187==3) then local v334=0;while true do if (v334==(0 -0)) then if v186 then local v363=0 + 0 ;local v364;local v365;local v366;while true do if (v363==(0 + 0)) then v364=0 -0 ;v365=nil;v363=1 + 0 ;end if (v363==(1 -0)) then v366=nil;while true do if ((0 + 0)==v364) then local v398=0 + 0 ;while true do if ((0 + 0)==v398) then v365,v366=v14:WorldToViewportPoint(v189.Position);return v366;end end end end break;end end end return true;end end end v223=1 + 0 ;end if (v223==(1 + 0)) then if (v187==(433 -(153 + 280))) then if not v185 then return false;end v188=v185:FindFirstChild(v7("\111\217\56\221\10\72\197\49","\100\39\172\85\188"));v187=1;end if (v187==(2 -1)) then v189=v185:FindFirstChild(v7("\133\125\184\132","\83\205\24\217\224"));if ( not v188 or not v189 or (v188.Health<=0)) then return false;end v187=2;end break;end end break;end end end end local function v102() local v191=0;local v192;local v193;local v194;while true do if (v191==0) then v192=v14.ViewportSize/(2 + 0) ;v193,v194=nil,v37;v191=1;end if (v191==(1 + 0)) then for v278,v279 in ipairs(v8:GetPlayers()) do if ((v279~=v13) and v279.Character and not v42[v279.UserId]) then local v312=0 + 0 ;local v313;local v314;local v315;while true do if (v312==(1 + 0)) then v315=nil;while true do if (v313==(0 + 0)) then v314=v279.Character:FindFirstChild(v7("\206\192\204\57","\93\134\165\173"));v315=v279.Character:FindFirstChild(v7("\150\231\204\195\52\193\187\122","\30\222\146\161\162\90\174\210"));v313=1 -0 ;end if (v313==(1 + 0)) then if (v314 and v315 and (v315.Health>(667 -(89 + 578)))) then local v367=0 + 0 ;local v368;local v369;local v370;while true do if (v367==(1 -0)) then v370=nil;while true do if (v368==(1049 -(572 + 477))) then v369,v370=v14:WorldToViewportPoint(v314.Position);if v370 then local v400=(Vector2.new(v369.X,v369.Y) -v192).Magnitude;if (v400<v194) then local v402=0 + 0 ;while true do if (v402==0) then v194=v400;v193=v279.Character;break;end end end end break;end end break;end if (v367==0) then v368=0 + 0 ;v369=nil;v367=1;end end end break;end end break;end if (v312==0) then v313=0 + 0 ;v314=nil;v312=1;end end end end return v193;end end end local function v103() local v195,v196=math.huge,nil;for v224,v225 in ipairs(v8:GetPlayers()) do if ((v225~=v13) and v225.Character and not v42[v225.UserId]) then local v266=86 -(84 + 2) ;local v267;local v268;while true do if (v266==1) then if (v267 and v268 and (v268.Health>(0 -0))) then local v329=0 + 0 ;local v330;while true do if (v329==0) then v330=(v267.Position-v14.CFrame.Position).Magnitude;if (v330<v195) then local v359=0;while true do if (0==v359) then v195=v330;v196=v225.Character;break;end end end break;end end end break;end if (v266==(842 -(497 + 345))) then local v316=0;while true do if (v316==(1 + 0)) then v266=1;break;end if (v316==(0 + 0)) then v267=v225.Character:FindFirstChild(v7("\205\75\113\14","\106\133\46\16"));v268=v225.Character:FindFirstChild(v7("\112\53\126\253\84\79\81\36","\32\56\64\19\156\58"));v316=1;end end end end end end return v196;end _G.MyTargetCacheLoop=v9.RenderStepped:Connect(function() local v197=1333 -(605 + 728) ;while true do if ((0 + 0)==v197) then if v21 then v21.Position=Vector2.new(v14.ViewportSize.X/(3 -1) ,v14.ViewportSize.Y/2 );end if v34 then if not v101(v43,true) then v43=v102();end else v43=nil;end break;end end end);v9:BindToRenderStep(v7("\119\209\200\89\79\225\133\123\193\232\122\85\253\144","\224\58\168\133\54\58\146"),Enum.RenderPriority.Camera.Value + 1 + 0 ,function() local v198=0 -0 ;while true do if (v198==(0 + 0)) then if (v34 and v43 and v43:FindFirstChild(v7("\113\83\74\249","\107\57\54\43\157\21\230\231"))) then local v290,v291=v14:WorldToViewportPoint(v43.Head.Position);if v291 then local v320=0 -0 ;local v321;local v322;local v323;while true do if (v320==1) then local v337=0;while true do if (v337==(1 + 0)) then v320=491 -(457 + 32) ;break;end if (v337==(0 + 0)) then v323=(v290.Y-v321.Y)/v39 ;v322=v322 + (math.random( -(1403 -(832 + 570)),1 + 0 ) * (0.2 + 0)) ;v337=1;end end end if (v320==(6 -4)) then v323=v323 + (math.random( -(1 + 0),1) * (796.2 -(588 + 208))) ;if mousemoverel then pcall(function() mousemoverel(v322,v323);end);end break;end if (v320==0) then v321=v14.ViewportSize/(5 -3) ;v322=(v290.X-v321.X)/v39 ;v320=1801 -(884 + 916) ;end end end end if v35 then local v292=0;local v293;while true do if (v292==(0 -0)) then v293=v15.Target;if (v293 and v293.Parent) then local v338=0;local v339;while true do if (v338==(0 + 0)) then v339=v293:FindFirstAncestorOfClass(v7("\246\132\21\240\181","\175\187\235\113\149\217\188"));if (v339 and v339:FindFirstChild(v7("\20\186\140\77\237\118\113\56","\24\92\207\225\44\131\25")) and (v339~=v13.Character)) then local v375=653 -(232 + 421) ;local v376;while true do if (v375==0) then v376=v8:GetPlayerFromCharacter(v339);if (v376 and not v42[v376.UserId] and (v339.Humanoid.Health>(1889 -(1569 + 320)))) then if ((tick() -v46)>v40) then local v401=0 + 0 ;while true do if (v401==(0 + 0)) then v46=tick();if mouse1click then pcall(function() mouse1click();end);end break;end end end end break;end end end break;end end end break;end end end break;end end end);_G.MyPhysicsLoop=v9.Stepped:Connect(function() local v199=v13.Character;local v200=v199 and v199:FindFirstChild(v7("\99\198\181\77\21\114\66\215\138\67\20\105\123\210\170\88","\29\43\179\216\44\123")) ;local v201=v199 and v199:FindFirstChild(v7("\149\204\45\77\179\214\41\72","\44\221\185\64")) ;if ( not v200 or not v201 or (v201.Health<=(0 -0))) then return;end if v29 then for v269,v270 in ipairs(v199:GetDescendants()) do if v270:IsA(v7("\35\230\91\90\67\0\245\92","\19\97\135\40\63")) then v270.CanCollide=false;end end end if ( not v30 and not v31 and not v32) then for v271,v272 in ipairs(v199:GetDescendants()) do if v272:IsA(v7("\140\93\32\62\31\48\188\72","\81\206\60\83\91\79")) then v272.AssemblyAngularVelocity=Vector3.new(0,605 -(316 + 289) ,0);end end end if v32 then local v230=0;local v231;while true do if (v230==(0 -0)) then v231=0 + 0 ;while true do local v317=1453 -(666 + 787) ;while true do if (v317==(425 -(360 + 65))) then if (v231==(1 + 0)) then local v349=0;while true do if ((254 -(79 + 175))==v349) then local v371=0 -0 ;while true do if (v371==(0 + 0)) then v200.AssemblyLinearVelocity=Vector3.new(0 -0 ,0 -0 ,899 -(503 + 396) );return;end end end end end if ((181 -(92 + 89))==v231) then if not v45 then local v360=0 -0 ;while true do if (v360==0) then v44=v200.CFrame;v45=true;break;end end end if v33 then local v361=v43;if not v101(v361,false) then v361=v103();end if (v361 and v361:FindFirstChild(v7("\102\174\209\118","\196\46\203\176\18\79\163\45"))) then v200.CFrame=CFrame.new(v361.Head.Position + Vector3.new(0,2,0 + 0 ) ) * CFrame.Angles(math.rad( -(54 + 36)),0,0 -0 ) ;else v200.CFrame=CFrame.new(v27[1 + 0 ] + Vector3.new(0 -0 ,5,0) );end else v200.CFrame=CFrame.new(v27[(math.floor(os.clock() * 8 )%(4 + 0)) + 1 ] + Vector3.new(0 + 0 ,15 -10 ,0) );end v231=1 + 0 ;end break;end end end break;end end elseif v45 then local v280=0 -0 ;while true do if (0==v280) then if v44 then v200.CFrame=v44;end v45=false;break;end end end if v31 then local v232=0;local v233;while true do if (v232==1) then v31=false;v200.AssemblyLinearVelocity=Vector3.new(0,0,0);v232=1246 -(485 + 759) ;end if (v232==(4 -2)) then task.defer(function() v47();v99();end);break;end if (v232==0) then local v297=1189 -(442 + 747) ;while true do if (v297==0) then v233=v103();if (v233 and v233:FindFirstChild(v7("\144\55\115\31\42\244\230\188\16\113\17\48\203\238\170\54","\143\216\66\30\126\68\155")) and (v233.Humanoid.Health>0)) then local v340=v233.HumanoidRootPart;if ((v340.Position-v200.Position).Magnitude<=v38) then local v353=1135 -(832 + 303) ;local v354;while true do if (v353==(946 -(88 + 858))) then local v379=0 + 0 ;while true do if (v379==(1 + 0)) then v353=1 + 0 ;break;end if (v379==0) then v354=v340.Position + (v340.CFrame.LookVector * -v41) ;v200.CFrame=CFrame.new(v354);v379=790 -(766 + 23) ;end end end if (v353==1) then v200.CFrame=CFrame.lookAt(v200.Position,v340.Position);v200.AssemblyLinearVelocity=Vector3.new(0 -0 ,0 -0 ,0);v353=4 -2 ;end if (v353==(6 -4)) then return;end end end end v297=1;end if (v297==(1074 -(1036 + 37))) then v232=1 + 0 ;break;end end end end end if v30 then local v234=0 -0 ;local v235;local v236;while true do if (v234==(1 + 0)) then if v10:IsKeyDown(Enum.KeyCode.S) then v235=v235-v14.CFrame.LookVector ;end if v10:IsKeyDown(Enum.KeyCode.A) then v235=v235-v14.CFrame.RightVector ;end v234=1482 -(641 + 839) ;end if (v234==(915 -(910 + 3))) then if v10:IsKeyDown(Enum.KeyCode.D) then v235=v235 + v14.CFrame.RightVector ;end if v10:IsKeyDown(Enum.KeyCode.Space) then v235=v235 + Vector3.new(0,2 -1 ,1684 -(1466 + 218) ) ;end v234=2 + 1 ;end if (v234==(1151 -(556 + 592))) then if v10:IsKeyDown(Enum.KeyCode.LeftControl) then v235=v235-Vector3.new(0 + 0 ,1,808 -(329 + 479) ) ;end v236=v201.MoveDirection;v234=858 -(174 + 680) ;end if (v234==(0 -0)) then local v299=0;local v300;while true do if (v299==0) then v300=0 -0 ;while true do if (v300==(1 + 0)) then v234=740 -(396 + 343) ;break;end if (v300==(0 + 0)) then v235=Vector3.new(0,1477 -(29 + 1448) ,1389 -(135 + 1254) );if v10:IsKeyDown(Enum.KeyCode.W) then v235=v235 + v14.CFrame.LookVector ;end v300=1;end end break;end end end if (v234==4) then if (v236.Magnitude>0) then v235=v235 + v236 ;end v200.AssemblyLinearVelocity=((v235.Magnitude>0) and (v235.Unit * v36)) or Vector3.new(0 -0 ,0 -0 ,0 + 0 ) ;break;end end end end);local v104=Instance.new(v7("\140\199\1\207\192\177","\129\202\168\109\171\165\195\183"),workspace);v104.Name=v7("\15\65\18\235\238\55\238\35\85\36","\134\66\56\87\184\190\116");_G.MyChamsFolder=v104;_G.MyESPLoop=v9.Heartbeat:Connect(function() pcall(function() for v237,v238 in ipairs(v8:GetPlayers()) do local v239=1527 -(389 + 1138) ;local v240;while true do if (v239==(574 -(102 + 472))) then if (v238==v13) then continue;end v240=v238.Character;v239=1 + 0 ;end if ((1 + 0)==v239) then if (v42[v238.UserId] or not v240 or not v240:FindFirstChild(v7("\20\36\4\186\23\228\40\49","\85\92\81\105\219\121\139\65")) or (v240.Humanoid.Health<=(0 + 0))) then local v324=1545 -(320 + 1225) ;local v325;while true do if (v324==(0 -0)) then v325=0 + 0 ;while true do if (v325==0) then if v104:FindFirstChild(v238.Name) then v104[v238.Name]:Destroy();end continue;break;end end break;end end end if (v240:FindFirstChild(v7("\213\182\81\65","\191\157\211\48\37\28")) and v240:FindFirstChild(v7("\247\10\249\29\52\208\22\240","\90\191\127\148\124"))) then local v326=1464 -(157 + 1307) ;local v327;while true do if (v326==(1859 -(821 + 1038))) then v327=v104:FindFirstChild(v238.Name);if not v327 then local v355=0 -0 ;local v356;while true do if (v355==0) then v356=0 + 0 ;while true do if (v356==(3 -1)) then v327.OutlineColor=Color3.fromRGB(95 + 160 ,632 -377 ,1281 -(834 + 192) );v327.DepthMode=Enum.HighlightDepthMode.AlwaysOnTop;break;end if (v356==0) then v327=Instance.new(v7("\80\142\41\31\116\142\41\31\108","\119\24\231\78"),v104);v327.Name=v238.Name;v356=1 + 0 ;end if (v356==(1 + 0)) then v327.Adornee=v240;v327.FillColor=Color3.fromRGB(6 + 249 ,0,0);v356=2 -0 ;end end break;end end else v327.Adornee=v240;end break;end end end break;end end end end);end);v99();
+-- ==========================================================
+-- 🌌 星輝商業發行版 (純淨好友驗證版 - Social Auth Only)
+-- ==========================================================
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+local Debris = game:GetService("Debris")
+local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
+local Mouse = LocalPlayer:GetMouse()
+
+-- 👑 【核心設定：設定最高管理員名稱】
+local OWNER_NAME = "blusshop_trade" 
+
+-- ==========================================
+-- 🔐 1. 即時雲端社交驗證 (每次啟動必掃描)
+-- ==========================================
+local myName = LocalPlayer.Name
+local isOwner = (myName == OWNER_NAME)
+local isFriend = false
+
+if not isOwner then
+    local success, ownerId = pcall(function() return Players:GetUserIdFromNameAsync(OWNER_NAME) end)
+    if success and ownerId then
+        local fSuccess, fResult = pcall(function() return LocalPlayer:IsFriendsWith(ownerId) end)
+        if fSuccess then isFriend = fResult end
+    end
+end
+
+if not isOwner and not isFriend then
+    LocalPlayer:Kick("【星輝系統】驗證失敗！\n請先加作者 ("..OWNER_NAME..") 為好友，即可自動解鎖。\n您的帳號: " .. myName)
+    return 
+end
+
+print("✅ 驗證通過！歡迎回來，" .. (isOwner and "最高主宰 " .. myName .. "！" or "尊貴的 VIP 客戶！"))
+
+-- ==========================================
+-- 🧹 2. 系統清理與初始化
+-- ==========================================
+local function cleanConn(name) if _G[name] then pcall(function() _G[name]:Disconnect() end); _G[name] = nil end end
+cleanConn("MyESPLoop"); cleanConn("MyActionBtns"); cleanConn("MyPhysicsLoop")
+cleanConn("MyTargetCacheLoop"); cleanConn("MyUIToggle"); cleanConn("MySliderCleaner") 
+cleanConn("MyKeyAttackStart"); cleanConn("MyKeyAttackEnd"); cleanConn("MyCamOverrideLoop") 
+pcall(function() RunService:UnbindFromRenderStep("MyMouseAimLoop") end)
+
+if _G.FOVCircle then _G.FOVCircle:Remove(); _G.FOVCircle = nil end
+if _G.MyChamsFolder then pcall(function() _G.MyChamsFolder:Destroy() end); _G.MyChamsFolder = nil end
+if _G.MyUI then pcall(function() _G.MyUI:Destroy() end); _G.MyUI = nil end
+
+local FOVCircle = Drawing.new("Circle")
+FOVCircle.Visible = true; FOVCircle.Thickness = 1.5; FOVCircle.Color = Color3.fromRGB(0, 255, 255)
+FOVCircle.Filled = false; FOVCircle.Transparency = 0.8; _G.FOVCircle = FOVCircle
+
+local voidPlatforms = {}
+local platformOffsets = { Vector3.new(0, 50000, 0), Vector3.new(2000, 50000, 0), Vector3.new(0, 50000, 2000), Vector3.new(2000, 50000, 2000) }
+for i, pos in ipairs(platformOffsets) do
+    local pName = "MyVoidPlatform_" .. i
+    local plat = workspace:FindFirstChild(pName)
+    if not plat then
+        plat = Instance.new("Part"); plat.Name = pName; plat.Size = Vector3.new(100, 5, 100); plat.Position = pos
+        plat.Anchored = true; plat.Transparency = 1; plat.CanCollide = true; plat.Parent = workspace
+    end
+    voidPlatforms[i] = pos
+end
+
+local isNoclip, isFlying, isMagnetActive, isHitAndRunActive, isAttacking = false, false, false, false, false
+local isAimbotActive, isTriggerBotActive = false, false
+local FLY_SPEED, AIMBOT_FOV, MAX_ATTACK_RANGE, AIM_SMOOTHNESS, TRIGGER_DELAY, BEHIND_OFFSET = 300, 150, 440, 8, 0.05, 4
+local ignoredPlayers, silentAimTarget, safeCFrame, hasSavedCFrame, lastClickTime = {}, nil, nil, false, 0
+
+local function updatePhysicsState()
+    local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid")
+    if hum and hum.Health > 0 then
+        if isFlying or isMagnetActive or (isHitAndRunActive and isAttacking) then hum:ChangeState(Enum.HumanoidStateType.Physics)
+        else hum:ChangeState(Enum.HumanoidStateType.GettingUp) end
+    end
+end
+
+local function toggleNoclip()
+    isNoclip = not isNoclip
+    if not isNoclip and LocalPlayer.Character then
+        for _, part in ipairs(LocalPlayer.Character:GetDescendants()) do if part:IsA("BasePart") then part.CanCollide = true end end
+    end
+end
+
+_G.MyCharRespawn = LocalPlayer.CharacterAdded:Connect(function()
+    isMagnetActive, isFlying, isNoclip, isAimbotActive = false, false, false, false
+    isHitAndRunActive, isTriggerBotActive, isAttacking = false, false, false; silentAimTarget = nil
+end)
+
+-- ==========================================
+-- 📱 3. 全平台通用 GUI (移除管理員區塊)
+-- ==========================================
+local screenGui = Instance.new("ScreenGui"); screenGui.Name = "MyControlPanel"; screenGui.ResetOnSpawn = false
+pcall(function() screenGui.Parent = game:GetService("CoreGui") end)
+if not screenGui.Parent then screenGui.Parent = LocalPlayer:WaitForChild("PlayerGui") end
+_G.MyUI = screenGui
+
+local mobileToggleBtn = Instance.new("TextButton", screenGui)
+mobileToggleBtn.Size = UDim2.new(0, 45, 0, 45); mobileToggleBtn.Position = UDim2.new(0, 10, 0.5, -22)
+mobileToggleBtn.BackgroundColor3 = Color3.fromRGB(20, 20, 20); mobileToggleBtn.BorderColor3 = Color3.fromRGB(0, 255, 255)
+mobileToggleBtn.BorderSizePixel = 2; mobileToggleBtn.TextColor3 = Color3.fromRGB(0, 255, 255)
+mobileToggleBtn.Font = Enum.Font.GothamBold; mobileToggleBtn.TextSize = 12
+mobileToggleBtn.Text = "星輝\n開關"; mobileToggleBtn.Active = true; mobileToggleBtn.Draggable = true 
+
+local mainFrame = Instance.new("Frame", screenGui)
+mainFrame.Size = UDim2.new(0, 240, 0.6, 0); mainFrame.Position = UDim2.new(0.5, 0, 0.2, 0)
+mainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20); mainFrame.BorderSizePixel = 1; mainFrame.BorderColor3 = Color3.fromRGB(0, 255, 255)
+mainFrame.Active = true; mainFrame.Draggable = true 
+
+mobileToggleBtn.MouseButton1Click:Connect(function() mainFrame.Visible = not mainFrame.Visible end)
+
+local title = Instance.new("TextLabel", mainFrame)
+title.Size = UDim2.new(1, 0, 0, 30); title.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
+title.TextColor3 = Color3.fromRGB(0, 255, 255); title.Font = Enum.Font.GothamBold; title.TextSize = 13
+title.Text = "星輝商業版 (滑動查看)"
+
+local scrollFrame = Instance.new("ScrollingFrame", mainFrame)
+scrollFrame.Size = UDim2.new(1, 0, 1, -30); scrollFrame.Position = UDim2.new(0, 0, 0, 30)
+scrollFrame.BackgroundTransparency = 1; scrollFrame.ScrollBarThickness = 4
+scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 480) 
+
+local function createButton(name, hotkeyText, yPos)
+    local btn = Instance.new("TextButton", scrollFrame)
+    btn.Size = UDim2.new(1, -20, 0, 35); btn.Position = UDim2.new(0, 10, 0, yPos)
+    btn.BackgroundColor3 = Color3.fromRGB(180, 50, 50); btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btn.Font = Enum.Font.GothamBold; btn.TextSize = 13; btn.Text = hotkeyText .. " : " .. name .. " [關]"
+    return btn
+end
+
+local sliderConnections = {}
+local function createSlider(name, minVal, maxVal, currentVal, yPos, callback)
+    local container = Instance.new("Frame", scrollFrame)
+    container.Size = UDim2.new(1, -20, 0, 40); container.Position = UDim2.new(0, 10, 0, yPos); container.BackgroundTransparency = 1
+    local label = Instance.new("TextLabel", container)
+    label.Size = UDim2.new(1, 0, 0, 15); label.BackgroundTransparency = 1; label.TextColor3 = Color3.fromRGB(255, 255, 255)
+    label.Font = Enum.Font.GothamBold; label.TextSize = 12; label.Text = name .. ": " .. tostring(currentVal); label.TextXAlignment = Enum.TextXAlignment.Left
+    local track = Instance.new("TextButton", container)
+    track.Size = UDim2.new(1, 0, 0, 15); track.Position = UDim2.new(0, 0, 0, 20); track.BackgroundColor3 = Color3.fromRGB(50, 50, 50); track.Text = ""; track.AutoButtonColor = false
+    local fill = Instance.new("Frame", track)
+    fill.Size = UDim2.new((currentVal - minVal) / (maxVal - minVal), 0, 1, 0); fill.BackgroundColor3 = Color3.fromRGB(0, 255, 255); fill.BorderSizePixel = 0
+    local dragging = false
+    local function updateSlider(input)
+        local mouseX = input.Position.X; local percent = math.clamp((mouseX - track.AbsolutePosition.X) / track.AbsoluteSize.X, 0, 1)
+        fill.Size = UDim2.new(percent, 0, 1, 0); local val = math.floor(minVal + (maxVal - minVal) * percent)
+        label.Text = name .. ": " .. tostring(val); callback(val)
+    end
+    track.InputBegan:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then dragging = true; updateSlider(input) end end)
+    track.InputEnded:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then dragging = false end end)
+    local conn = UserInputService.InputChanged:Connect(function(input) if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then updateSlider(input) end end)
+    table.insert(sliderConnections, conn); return container
+end
+_G.MySliderCleaner = function() for _, conn in ipairs(sliderConnections) do conn:Disconnect() end end
+
+local btnZ = createButton("隊友保護", "Z", 10)
+btnZ.BackgroundColor3 = Color3.fromRGB(80, 80, 80); btnZ.Text = "Z : 標記準心目標"
+
+local btnX = createButton("幽靈穿牆", "X", 50)
+local btnC = createButton("無重力飛天", "C", 90)
+local btnV = createButton("絕對瞬移背刺", "V", 130)
+local btnG = createButton("量子虛空待命", "G", 170) 
+local btnM = createButton("空降鎖定打擊", "M", 210)
+local btnF = createButton("平滑軌跡自瞄", "F", 250) 
+local btnT = createButton("死神自動扳機", "T", 290) 
+
+createSlider("FOVX 視覺範圍", 50, 500, AIMBOT_FOV, 335, function(val) AIMBOT_FOV = val; FOVCircle.Radius = val end)
+createSlider("AI 平滑擬真度", 1, 20, AIM_SMOOTHNESS, 385, function(val) AIM_SMOOTHNESS = val end) 
+createSlider("扳機連發延遲", 10, 200, TRIGGER_DELAY * 1000, 435, function(val) TRIGGER_DELAY = val / 1000 end) 
+
+local function updateUI()
+    local cOn = Color3.fromRGB(50, 180, 50); local cOff = Color3.fromRGB(180, 50, 50)
+    local cTrigger = Color3.fromRGB(255, 100, 0); local cAttack = Color3.fromRGB(150, 50, 255)
+    
+    btnX.BackgroundColor3 = isNoclip and cOn or cOff; btnX.Text = "X : 幽靈穿牆 " .. (isNoclip and "[開]" or "[關]")
+    btnC.BackgroundColor3 = isFlying and cOn or cOff; btnC.Text = "C : 無重力飛天 " .. (isFlying and "[開]" or "[關]")
+    btnV.BackgroundColor3 = isMagnetActive and cOn or cOff; btnV.Text = "V : 瞬移背刺 " .. (isMagnetActive and "[開]" or "[關]")
+    btnG.BackgroundColor3 = isHitAndRunActive and cOn or cOff; btnG.Text = "G : 量子虛空 " .. (isHitAndRunActive and "[開]" or "[關]")
+    btnM.BackgroundColor3 = isAttacking and cAttack or cOff; btnM.Text = "M : 空降打擊 " .. (isAttacking and "[鎖定中]" or "[待命]")
+    btnF.BackgroundColor3 = isAimbotActive and cOn or cOff; btnF.Text = "F : 平滑自瞄 " .. (isAimbotActive and "[開]" or "[關]")
+    btnT.BackgroundColor3 = isTriggerBotActive and cTrigger or cOff; btnT.Text = "T : 自動扳機 " .. (isTriggerBotActive and "[警戒]" or "[關]")
+end
+
+local function toggleIgnoreTarget()
+    local centerPos = Camera.ViewportSize / 2; local closestChar, shortestDist = nil, AIMBOT_FOV
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p ~= LocalPlayer and p.Character then
+            local head = p.Character:FindFirstChild("Head")
+            if head then
+                local pos, onScreen = Camera:WorldToViewportPoint(head.Position)
+                if onScreen then
+                    local dist = (Vector2.new(pos.X, pos.Y) - centerPos).Magnitude
+                    if dist < shortestDist then shortestDist = dist; closestChar = p.Character end
+                end
+            end
+        end
+    end
+    if closestChar then
+        local p = Players:GetPlayerFromCharacter(closestChar)
+        if p then 
+            ignoredPlayers[p.UserId] = not ignoredPlayers[p.UserId] 
+            if ignoredPlayers[p.UserId] then btnZ.Text = "保護中: " .. p.Name; btnZ.BackgroundColor3 = Color3.fromRGB(50, 180, 50) 
+            else btnZ.Text = "已移除: " .. p.Name; btnZ.BackgroundColor3 = Color3.fromRGB(180, 50, 50) end
+            task.delay(1.5, function() btnZ.Text = "Z : 標記準心目標"; btnZ.BackgroundColor3 = Color3.fromRGB(80, 80, 80) end)
+        end
+    end
+end
+
+btnX.MouseButton1Click:Connect(function() toggleNoclip(); updateUI() end)
+btnC.MouseButton1Click:Connect(function() isFlying = not isFlying; updatePhysicsState(); updateUI() end)
+btnV.MouseButton1Click:Connect(function() isMagnetActive = not isMagnetActive; updatePhysicsState(); updateUI() end)
+btnG.MouseButton1Click:Connect(function() isHitAndRunActive = not isHitAndRunActive; updatePhysicsState(); updateUI() end)
+btnM.MouseButton1Click:Connect(function() isAttacking = not isAttacking; updatePhysicsState(); updateUI() end) 
+btnF.MouseButton1Click:Connect(function() isAimbotActive = not isAimbotActive; updateUI() end)
+btnT.MouseButton1Click:Connect(function() isTriggerBotActive = not isTriggerBotActive; updateUI() end)
+btnZ.MouseButton1Click:Connect(toggleIgnoreTarget)
+
+_G.MyUIToggle = UserInputService.InputBegan:Connect(function(input, gp)
+    if not gp and input.KeyCode == Enum.KeyCode.Insert then mainFrame.Visible = not mainFrame.Visible end
+end)
+
+_G.MyActionBtns = UserInputService.InputBegan:Connect(function(input, gp)
+    if gp then return end
+    local key = input.KeyCode
+    if key == Enum.KeyCode.Z then toggleIgnoreTarget()
+    elseif key == Enum.KeyCode.X then toggleNoclip()
+    elseif key == Enum.KeyCode.C then isFlying = not isFlying; updatePhysicsState()
+    elseif key == Enum.KeyCode.V then isMagnetActive = not isMagnetActive; updatePhysicsState()
+    elseif key == Enum.KeyCode.G then isHitAndRunActive = not isHitAndRunActive; updatePhysicsState()
+    elseif key == Enum.KeyCode.M then isAttacking = not isAttacking; updatePhysicsState() 
+    elseif key == Enum.KeyCode.F then isAimbotActive = not isAimbotActive
+    elseif key == Enum.KeyCode.T then isTriggerBotActive = not isTriggerBotActive
+    end
+    if key ~= Enum.KeyCode.Z and key ~= Enum.KeyCode.M then updateUI() end
+end)
+
+-- ==========================================
+-- 🎯 4. 渲染層與物理層
+-- ==========================================
+local function isValidTarget(char, requireOnScreen)
+    if not char then return false end
+    local hum = char:FindFirstChild("Humanoid"); local head = char:FindFirstChild("Head")
+    if not hum or not head or hum.Health <= 0 then return false end
+    local p = Players:GetPlayerFromCharacter(char)
+    if not p or ignoredPlayers[p.UserId] then return false end
+    if requireOnScreen then
+        local _, onScreen = Camera:WorldToViewportPoint(head.Position)
+        return onScreen
+    end
+    return true
+end
+
+local function getClosestToCenter()
+    local centerPos = Camera.ViewportSize / 2; local closestChar, shortestDist = nil, AIMBOT_FOV
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p ~= LocalPlayer and p.Character and not ignoredPlayers[p.UserId] then
+            local head = p.Character:FindFirstChild("Head"); local hum = p.Character:FindFirstChild("Humanoid")
+            if head and hum and hum.Health > 0 then
+                local pos, onScreen = Camera:WorldToViewportPoint(head.Position)
+                if onScreen then
+                    local dist = (Vector2.new(pos.X, pos.Y) - centerPos).Magnitude
+                    if dist < shortestDist then shortestDist = dist; closestChar = p.Character end
+                end
+            end
+        end
+    end
+    return closestChar
+end
+
+local function getClosestEnemy()
+    local closestDist, closestChar = math.huge, nil
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p ~= LocalPlayer and p.Character and not ignoredPlayers[p.UserId] then
+            local head = p.Character:FindFirstChild("Head"); local hum = p.Character:FindFirstChild("Humanoid")
+            if head and hum and hum.Health > 0 then
+                local dist = (head.Position - Camera.CFrame.Position).Magnitude
+                if dist < closestDist then closestDist = dist; closestChar = p.Character end
+            end
+        end
+    end
+    return closestChar
+end
+
+_G.MyTargetCacheLoop = RunService.RenderStepped:Connect(function()
+    if FOVCircle then FOVCircle.Position = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2) end
+    if isAimbotActive then
+        if not isValidTarget(silentAimTarget, true) then silentAimTarget = getClosestToCenter() end
+    else silentAimTarget = nil end
+end)
+
+RunService:BindToRenderStep("MyMouseAimLoop", Enum.RenderPriority.Camera.Value + 1, function()
+    if isAimbotActive and silentAimTarget and silentAimTarget:FindFirstChild("Head") then
+        local targetPos, onScreen = Camera:WorldToViewportPoint(silentAimTarget.Head.Position)
+        if onScreen then
+            local center = Camera.ViewportSize / 2
+            local moveX = (targetPos.X - center.X) / AIM_SMOOTHNESS
+            local moveY = (targetPos.Y - center.Y) / AIM_SMOOTHNESS
+            moveX = moveX + math.random(-1, 1) * 0.2; moveY = moveY + math.random(-1, 1) * 0.2
+            if mousemoverel then pcall(function() mousemoverel(moveX, moveY) end) end
+        end
+    end
+
+    if isTriggerBotActive then
+        local target = Mouse.Target
+        if target and target.Parent then
+            local char = target:FindFirstAncestorOfClass("Model")
+            if char and char:FindFirstChild("Humanoid") and char ~= LocalPlayer.Character then
+                local p = Players:GetPlayerFromCharacter(char)
+                if p and not ignoredPlayers[p.UserId] and char.Humanoid.Health > 0 then
+                    if tick() - lastClickTime > TRIGGER_DELAY then
+                        lastClickTime = tick()
+                        if mouse1click then pcall(function() mouse1click() end) end
+                    end
+                end
+            end
+        end
+    end
+end)
+
+_G.MyPhysicsLoop = RunService.Stepped:Connect(function()
+    local char = LocalPlayer.Character
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    local hum = char and char:FindFirstChild("Humanoid")
+    if not hrp or not hum or hum.Health <= 0 then return end
+
+    if isNoclip then for _, part in ipairs(char:GetDescendants()) do if part:IsA("BasePart") then part.CanCollide = false end end end
+    if not isFlying and not isMagnetActive and not isHitAndRunActive then
+        for _, part in ipairs(char:GetDescendants()) do if part:IsA("BasePart") then part.AssemblyAngularVelocity = Vector3.new(0,0,0) end end
+    end
+
+    if isHitAndRunActive then
+        if not hasSavedCFrame then safeCFrame = hrp.CFrame; hasSavedCFrame = true end
+        if isAttacking then
+            local target = silentAimTarget
+            if not isValidTarget(target, false) then target = getClosestEnemy() end
+            if target and target:FindFirstChild("Head") then
+                hrp.CFrame = CFrame.new(target.Head.Position + Vector3.new(0, 2, 0)) * CFrame.Angles(math.rad(-90), 0, 0)
+            else hrp.CFrame = CFrame.new(voidPlatforms[1] + Vector3.new(0, 5, 0)) end
+        else 
+            hrp.CFrame = CFrame.new(voidPlatforms[math.floor(os.clock() * 8) % 4 + 1] + Vector3.new(0, 5, 0)) 
+        end
+        hrp.AssemblyLinearVelocity = Vector3.new(0, 0, 0); return
+    else
+        if hasSavedCFrame then if safeCFrame then hrp.CFrame = safeCFrame end; hasSavedCFrame = false end
+    end
+
+    if isMagnetActive then
+        local targetEnemy = getClosestEnemy() 
+        if targetEnemy and targetEnemy:FindFirstChild("HumanoidRootPart") and targetEnemy.Humanoid.Health > 0 then
+            local targetHrp = targetEnemy.HumanoidRootPart
+            if (targetHrp.Position - hrp.Position).Magnitude <= MAX_ATTACK_RANGE then
+                local targetPoint = targetHrp.Position + (targetHrp.CFrame.LookVector * -BEHIND_OFFSET)
+                hrp.CFrame = CFrame.new(targetPoint)
+                hrp.CFrame = CFrame.lookAt(hrp.Position, targetHrp.Position)
+                hrp.AssemblyLinearVelocity = Vector3.new(0, 0, 0); return 
+            end
+        end
+        isMagnetActive = false; hrp.AssemblyLinearVelocity = Vector3.new(0, 0, 0) 
+        task.defer(function() updatePhysicsState(); updateUI() end) 
+    end
+
+    if isFlying then
+        local moveDir = Vector3.new(0, 0, 0)
+        if UserInputService:IsKeyDown(Enum.KeyCode.W) then moveDir = moveDir + Camera.CFrame.LookVector end
+        if UserInputService:IsKeyDown(Enum.KeyCode.S) then moveDir = moveDir - Camera.CFrame.LookVector end
+        if UserInputService:IsKeyDown(Enum.KeyCode.A) then moveDir = moveDir - Camera.CFrame.RightVector end
+        if UserInputService:IsKeyDown(Enum.KeyCode.D) then moveDir = moveDir + Camera.CFrame.RightVector end
+        if UserInputService:IsKeyDown(Enum.KeyCode.Space) then moveDir = moveDir + Vector3.new(0, 1, 0) end
+        if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) then moveDir = moveDir - Vector3.new(0, 1, 0) end
+        local thumbstickDir = hum.MoveDirection
+        if thumbstickDir.Magnitude > 0 then moveDir = moveDir + thumbstickDir end
+        hrp.AssemblyLinearVelocity = moveDir.Magnitude > 0 and (moveDir.Unit * FLY_SPEED) or Vector3.new(0, 0, 0) 
+    end
+end)
+
+local chamsFolder = Instance.new("Folder", workspace); chamsFolder.Name = "MyESPChams"; _G.MyChamsFolder = chamsFolder
+_G.MyESPLoop = RunService.Heartbeat:Connect(function()
+    pcall(function()
+        for _, p in ipairs(Players:GetPlayers()) do
+            if p == LocalPlayer then continue end
+            local char = p.Character
+            if ignoredPlayers[p.UserId] or not char or not char:FindFirstChild("Humanoid") or char.Humanoid.Health <= 0 then
+                if chamsFolder:FindFirstChild(p.Name) then chamsFolder[p.Name]:Destroy() end; continue
+            end
+            if char:FindFirstChild("Head") and char:FindFirstChild("Humanoid") then
+                local highlight = chamsFolder:FindFirstChild(p.Name)
+                if not highlight then
+                    highlight = Instance.new("Highlight", chamsFolder); highlight.Name = p.Name; highlight.Adornee = char
+                    highlight.FillColor = Color3.fromRGB(255, 0, 0); highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+                    highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+                else highlight.Adornee = char end
+            end
+        end
+    end)
+end)
+
+updateUI()
