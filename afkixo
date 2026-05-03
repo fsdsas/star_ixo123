@@ -1,0 +1,395 @@
+-- ==========================================================
+-- 🌌 星輝商業發行版 (The Dimension Hub - Premium)
+-- 包含：好友白名單驗證、全平台 UI、合法自瞄、空間神技
+-- ==========================================================
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+local Debris = game:GetService("Debris")
+local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
+local Mouse = LocalPlayer:GetMouse()
+
+-- 👑 【核心設定：最高管理員 ID】
+local OWNER_ID = 12345678 -- 🔥🔥🔥 在發布前，務必將這裡改成你的 Roblox ID 🔥🔥🔥
+
+-- ==========================================
+-- 🔐 1. 雲端社交驗證系統 (加好友解鎖)
+-- ==========================================
+local myID = LocalPlayer.UserId
+local isOwner = (myID == OWNER_ID)
+local isFriend = false
+
+if not isOwner then
+    local success, result = pcall(function() return LocalPlayer:IsFriendsWith(OWNER_ID) end)
+    if success then isFriend = result end
+end
+
+if not isOwner and not isFriend then
+    LocalPlayer:Kick("【星輝系統】未授權！\n請先加作者為好友，即可解鎖 VIP 權限。\n你的 ID: " .. tostring(myID))
+    return 
+end
+print("✅ 驗證通過！歡迎回來，" .. (isOwner and "最高主宰！" or "VIP 好友！"))
+
+-- ==========================================
+-- 🧹 2. 系統清理與初始化
+-- ==========================================
+local function cleanConn(name) if _G[name] then pcall(function() _G[name]:Disconnect() end); _G[name] = nil end end
+cleanConn("MyESPLoop"); cleanConn("MyActionBtns"); cleanConn("MyPhysicsLoop")
+cleanConn("MyTargetCacheLoop"); cleanConn("MyUIToggle"); cleanConn("MySliderCleaner") 
+cleanConn("MyKeyAttackStart"); cleanConn("MyKeyAttackEnd"); cleanConn("MyCamOverrideLoop") 
+pcall(function() RunService:UnbindFromRenderStep("MyMouseAimLoop") end)
+
+if _G.FOVCircle then _G.FOVCircle:Remove(); _G.FOVCircle = nil end
+if _G.MyChamsFolder then pcall(function() _G.MyChamsFolder:Destroy() end); _G.MyChamsFolder = nil end
+if _G.MyUI then pcall(function() _G.MyUI:Destroy() end); _G.MyUI = nil end
+
+local FOVCircle = Drawing.new("Circle")
+FOVCircle.Visible = true; FOVCircle.Thickness = 1.5; FOVCircle.Color = Color3.fromRGB(0, 255, 255)
+FOVCircle.Filled = false; FOVCircle.Transparency = 0.8; _G.FOVCircle = FOVCircle
+
+local voidPlatforms = {}
+local platformOffsets = { Vector3.new(0, 50000, 0), Vector3.new(2000, 50000, 0), Vector3.new(0, 50000, 2000), Vector3.new(2000, 50000, 2000) }
+for i, pos in ipairs(platformOffsets) do
+    local pName = "MyVoidPlatform_" .. i
+    local plat = workspace:FindFirstChild(pName)
+    if not plat then
+        plat = Instance.new("Part"); plat.Name = pName; plat.Size = Vector3.new(100, 5, 100); plat.Position = pos
+        plat.Anchored = true; plat.Transparency = 1; plat.CanCollide = true; plat.Parent = workspace
+    end
+    voidPlatforms[i] = pos
+end
+
+local isNoclip, isFlying, isMagnetActive, isHitAndRunActive, isAttacking = false, false, false, false, false
+local isAimbotActive, isTriggerBotActive = false, false
+local FLY_SPEED, AIMBOT_FOV, MAX_ATTACK_RANGE, AIM_SMOOTHNESS, TRIGGER_DELAY, BEHIND_OFFSET = 300, 150, 440, 8, 0.05, 4
+local ignoredPlayers, silentAimTarget, safeCFrame, hasSavedCFrame, lastClickTime = {}, nil, nil, false, 0
+
+local function updatePhysicsState()
+    local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid")
+    if hum and hum.Health > 0 then
+        if isFlying or isMagnetActive or (isHitAndRunActive and isAttacking) then hum:ChangeState(Enum.HumanoidStateType.Physics)
+        else hum:ChangeState(Enum.HumanoidStateType.GettingUp) end
+    end
+end
+
+local function toggleNoclip()
+    isNoclip = not isNoclip
+    if not isNoclip and LocalPlayer.Character then
+        for _, part in ipairs(LocalPlayer.Character:GetDescendants()) do if part:IsA("BasePart") then part.CanCollide = true end end
+    end
+end
+
+_G.MyCharRespawn = LocalPlayer.CharacterAdded:Connect(function()
+    isMagnetActive, isFlying, isNoclip, isAimbotActive = false, false, false, false
+    isHitAndRunActive, isTriggerBotActive, isAttacking = false, false, false; silentAimTarget = nil
+end)
+
+_G.MyKeyAttackStart = UserInputService.InputBegan:Connect(function(input, gp)
+    if gp then return end; if input.KeyCode == Enum.KeyCode.M then isAttacking = true; updatePhysicsState() end
+end)
+_G.MyKeyAttackEnd = UserInputService.InputEnded:Connect(function(input, gp)
+    if input.KeyCode == Enum.KeyCode.M then isAttacking = false; updatePhysicsState() end
+end)
+
+-- ==========================================
+-- 📱 3. 全平台通用 GUI (支援手機滑動)
+-- ==========================================
+local screenGui = Instance.new("ScreenGui"); screenGui.Name = "MyControlPanel"; screenGui.ResetOnSpawn = false
+pcall(function() screenGui.Parent = game:GetService("CoreGui") end)
+if not screenGui.Parent then screenGui.Parent = LocalPlayer:WaitForChild("PlayerGui") end
+_G.MyUI = screenGui
+
+local mobileToggleBtn = Instance.new("TextButton", screenGui)
+mobileToggleBtn.Size = UDim2.new(0, 45, 0, 45); mobileToggleBtn.Position = UDim2.new(0, 10, 0.5, -22)
+mobileToggleBtn.BackgroundColor3 = Color3.fromRGB(20, 20, 20); mobileToggleBtn.BorderColor3 = Color3.fromRGB(0, 255, 255)
+mobileToggleBtn.BorderSizePixel = 2; mobileToggleBtn.TextColor3 = Color3.fromRGB(0, 255, 255)
+mobileToggleBtn.Font = Enum.Font.GothamBold; mobileToggleBtn.TextSize = 12
+mobileToggleBtn.Text = "星輝\n開關"; mobileToggleBtn.Active = true; mobileToggleBtn.Draggable = true 
+
+local mainFrame = Instance.new("Frame", screenGui)
+mainFrame.Size = UDim2.new(0, 240, 0.6, 0); mainFrame.Position = UDim2.new(0.5, 0, 0.2, 0)
+mainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20); mainFrame.BorderSizePixel = 1; mainFrame.BorderColor3 = Color3.fromRGB(0, 255, 255)
+mainFrame.Active = true; mainFrame.Draggable = true 
+
+mobileToggleBtn.MouseButton1Click:Connect(function() mainFrame.Visible = not mainFrame.Visible end)
+
+local title = Instance.new("TextLabel", mainFrame)
+title.Size = UDim2.new(1, 0, 0, 30); title.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
+title.TextColor3 = Color3.fromRGB(0, 255, 255); title.Font = Enum.Font.GothamBold; title.TextSize = 13
+title.Text = "星輝・商業版 (滑動查看)"
+
+local scrollFrame = Instance.new("ScrollingFrame", mainFrame)
+scrollFrame.Size = UDim2.new(1, 0, 1, -30); scrollFrame.Position = UDim2.new(0, 0, 0, 30)
+scrollFrame.BackgroundTransparency = 1; scrollFrame.ScrollBarThickness = 4; scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 450)
+
+local function createButton(name, hotkeyText, yPos)
+    local btn = Instance.new("TextButton", scrollFrame)
+    btn.Size = UDim2.new(1, -20, 0, 35); btn.Position = UDim2.new(0, 10, 0, yPos)
+    btn.BackgroundColor3 = Color3.fromRGB(180, 50, 50); btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btn.Font = Enum.Font.GothamBold; btn.TextSize = 13; btn.Text = hotkeyText .. " : " .. name .. " [關]"
+    return btn
+end
+
+local sliderConnections = {}
+local function createSlider(name, minVal, maxVal, currentVal, yPos, callback)
+    local container = Instance.new("Frame", scrollFrame)
+    container.Size = UDim2.new(1, -20, 0, 40); container.Position = UDim2.new(0, 10, 0, yPos); container.BackgroundTransparency = 1
+    local label = Instance.new("TextLabel", container)
+    label.Size = UDim2.new(1, 0, 0, 15); label.BackgroundTransparency = 1; label.TextColor3 = Color3.fromRGB(255, 255, 255)
+    label.Font = Enum.Font.GothamBold; label.TextSize = 12; label.Text = name .. ": " .. tostring(currentVal); label.TextXAlignment = Enum.TextXAlignment.Left
+    local track = Instance.new("TextButton", container)
+    track.Size = UDim2.new(1, 0, 0, 15); track.Position = UDim2.new(0, 0, 0, 20); track.BackgroundColor3 = Color3.fromRGB(50, 50, 50); track.Text = ""; track.AutoButtonColor = false
+    local fill = Instance.new("Frame", track)
+    fill.Size = UDim2.new((currentVal - minVal) / (maxVal - minVal), 0, 1, 0); fill.BackgroundColor3 = Color3.fromRGB(0, 255, 255); fill.BorderSizePixel = 0
+    local dragging = false
+    local function updateSlider(input)
+        local mouseX = input.Position.X; local percent = math.clamp((mouseX - track.AbsolutePosition.X) / track.AbsoluteSize.X, 0, 1)
+        fill.Size = UDim2.new(percent, 0, 1, 0); local val = math.floor(minVal + (maxVal - minVal) * percent)
+        label.Text = name .. ": " .. tostring(val); callback(val)
+    end
+    track.InputBegan:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then dragging = true; updateSlider(input) end end)
+    track.InputEnded:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then dragging = false end end)
+    local conn = UserInputService.InputChanged:Connect(function(input) if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then updateSlider(input) end end)
+    table.insert(sliderConnections, conn); return container
+end
+_G.MySliderCleaner = function() for _, conn in ipairs(sliderConnections) do conn:Disconnect() end end
+
+local btnZ = createButton("隊友保護", "Z", 10)
+btnZ.BackgroundColor3 = Color3.fromRGB(80, 80, 80); btnZ.Text = "Z : 標記準心目標"
+
+local btnX = createButton("幽靈穿牆", "X", 50)
+local btnC = createButton("無重力飛天", "C", 90)
+local btnV = createButton("絕對瞬移背刺", "V", 130)
+local btnG = createButton("量子虛空待命", "G", 170) 
+local btnM = createButton("空降鎖定打擊", "M", 210)
+local btnF = createButton("平滑軌跡自瞄", "F", 250) 
+local btnT = createButton("死神自動扳機", "T", 290) 
+
+createSlider("FOVX 視覺範圍", 50, 500, AIMBOT_FOV, 335, function(val) AIMBOT_FOV = val; FOVCircle.Radius = val end)
+createSlider("AI 平滑擬真度", 1, 20, AIM_SMOOTHNESS, 385, function(val) AIM_SMOOTHNESS = val end) 
+createSlider("扳機連發延遲", 10, 200, TRIGGER_DELAY * 1000, 435, function(val) TRIGGER_DELAY = val / 1000 end) 
+
+local function updateUI()
+    local cOn = Color3.fromRGB(50, 180, 50); local cOff = Color3.fromRGB(180, 50, 50)
+    local cTrigger = Color3.fromRGB(255, 100, 0); local cAttack = Color3.fromRGB(150, 50, 255)
+    
+    btnX.BackgroundColor3 = isNoclip and cOn or cOff; btnX.Text = "X : 幽靈穿牆 " .. (isNoclip and "[開]" or "[關]")
+    btnC.BackgroundColor3 = isFlying and cOn or cOff; btnC.Text = "C : 無重力飛天 " .. (isFlying and "[開]" or "[關]")
+    btnV.BackgroundColor3 = isMagnetActive and cOn or cOff; btnV.Text = "V : 瞬移背刺 " .. (isMagnetActive and "[開]" or "[關]")
+    btnG.BackgroundColor3 = isHitAndRunActive and cOn or cOff; btnG.Text = "G : 量子虛空 " .. (isHitAndRunActive and "[開]" or "[關]")
+    btnM.BackgroundColor3 = isAttacking and cAttack or cOff; btnM.Text = "M : 空降打擊 " .. (isAttacking and "[鎖定中]" or "[待命]")
+    btnF.BackgroundColor3 = isAimbotActive and cOn or cOff; btnF.Text = "F : 平滑自瞄 " .. (isAimbotActive and "[開]" or "[關]")
+    btnT.BackgroundColor3 = isTriggerBotActive and cTrigger or cOff; btnT.Text = "T : 自動扳機 " .. (isTriggerBotActive and "[警戒]" or "[關]")
+end
+
+local function toggleIgnoreTarget()
+    local centerPos = Camera.ViewportSize / 2; local closestChar, shortestDist = nil, AIMBOT_FOV
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p ~= LocalPlayer and p.Character then
+            local head = p.Character:FindFirstChild("Head")
+            if head then
+                local pos, onScreen = Camera:WorldToViewportPoint(head.Position)
+                if onScreen then
+                    local dist = (Vector2.new(pos.X, pos.Y) - centerPos).Magnitude
+                    if dist < shortestDist then shortestDist = dist; closestChar = p.Character end
+                end
+            end
+        end
+    end
+    if closestChar then
+        local p = Players:GetPlayerFromCharacter(closestChar)
+        if p then 
+            ignoredPlayers[p.UserId] = not ignoredPlayers[p.UserId] 
+            if ignoredPlayers[p.UserId] then btnZ.Text = "保護中: " .. p.Name; btnZ.BackgroundColor3 = Color3.fromRGB(50, 180, 50) 
+            else btnZ.Text = "已移除: " .. p.Name; btnZ.BackgroundColor3 = Color3.fromRGB(180, 50, 50) end
+            task.delay(1.5, function() btnZ.Text = "Z : 標記準心目標"; btnZ.BackgroundColor3 = Color3.fromRGB(80, 80, 80) end)
+        end
+    end
+end
+
+btnX.MouseButton1Click:Connect(function() toggleNoclip(); updateUI() end)
+btnC.MouseButton1Click:Connect(function() isFlying = not isFlying; updatePhysicsState(); updateUI() end)
+btnV.MouseButton1Click:Connect(function() isMagnetActive = not isMagnetActive; updatePhysicsState(); updateUI() end)
+btnG.MouseButton1Click:Connect(function() isHitAndRunActive = not isHitAndRunActive; updatePhysicsState(); updateUI() end)
+btnM.MouseButton1Click:Connect(function() isAttacking = not isAttacking; updatePhysicsState(); updateUI() end) 
+btnF.MouseButton1Click:Connect(function() isAimbotActive = not isAimbotActive; updateUI() end)
+btnT.MouseButton1Click:Connect(function() isTriggerBotActive = not isTriggerBotActive; updateUI() end)
+btnZ.MouseButton1Click:Connect(toggleIgnoreTarget)
+
+_G.MyUIToggle = UserInputService.InputBegan:Connect(function(input, gp)
+    if not gp and input.KeyCode == Enum.KeyCode.Insert then mainFrame.Visible = not mainFrame.Visible end
+end)
+
+_G.MyActionBtns = UserInputService.InputBegan:Connect(function(input, gp)
+    if gp then return end
+    local key = input.KeyCode
+    if key == Enum.KeyCode.Z then toggleIgnoreTarget()
+    elseif key == Enum.KeyCode.X then toggleNoclip()
+    elseif key == Enum.KeyCode.C then isFlying = not isFlying; updatePhysicsState()
+    elseif key == Enum.KeyCode.V then isMagnetActive = not isMagnetActive; updatePhysicsState()
+    elseif key == Enum.KeyCode.G then isHitAndRunActive = not isHitAndRunActive; updatePhysicsState()
+    elseif key == Enum.KeyCode.F then isAimbotActive = not isAimbotActive
+    elseif key == Enum.KeyCode.T then isTriggerBotActive = not isTriggerBotActive
+    end
+    if key ~= Enum.KeyCode.Z and key ~= Enum.KeyCode.M then updateUI() end
+end)
+
+-- ==========================================
+-- 🎯 4. 渲染層與物理層 (核心)
+-- ==========================================
+local function isValidTarget(char)
+    if not char then return false end
+    local hum = char:FindFirstChild("Humanoid"); local head = char:FindFirstChild("Head")
+    if not hum or not head or hum.Health <= 0 then return false end
+    local p = Players:GetPlayerFromCharacter(char)
+    if not p or ignoredPlayers[p.UserId] then return false end
+    local _, onScreen = Camera:WorldToViewportPoint(head.Position)
+    return onScreen
+end
+
+local function getClosestToCenter()
+    local centerPos = Camera.ViewportSize / 2; local closestChar, shortestDist = nil, AIMBOT_FOV
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p ~= LocalPlayer and p.Character and not ignoredPlayers[p.UserId] then
+            local head = p.Character:FindFirstChild("Head"); local hum = p.Character:FindFirstChild("Humanoid")
+            if head and hum and hum.Health > 0 then
+                local pos, onScreen = Camera:WorldToViewportPoint(head.Position)
+                if onScreen then
+                    local dist = (Vector2.new(pos.X, pos.Y) - centerPos).Magnitude
+                    if dist < shortestDist then shortestDist = dist; closestChar = p.Character end
+                end
+            end
+        end
+    end
+    return closestChar
+end
+
+local function getClosestEnemy()
+    local closestDist, closestChar = math.huge, nil
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p ~= LocalPlayer and p.Character and not ignoredPlayers[p.UserId] then
+            local head = p.Character:FindFirstChild("Head"); local hum = p.Character:FindFirstChild("Humanoid")
+            if head and hum and hum.Health > 0 then
+                local dist = (head.Position - Camera.CFrame.Position).Magnitude
+                if dist < closestDist then closestDist = dist; closestChar = p.Character end
+            end
+        end
+    end
+    return closestChar
+end
+
+_G.MyTargetCacheLoop = RunService.RenderStepped:Connect(function()
+    if FOVCircle then FOVCircle.Position = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2) end
+    if isAimbotActive or (isHitAndRunActive and isAttacking) then
+        if not isValidTarget(silentAimTarget) then silentAimTarget = getClosestToCenter() end
+    else silentAimTarget = nil end
+end)
+
+RunService:BindToRenderStep("MyMouseAimLoop", Enum.RenderPriority.Camera.Value + 1, function()
+    if isAimbotActive and silentAimTarget and silentAimTarget:FindFirstChild("Head") then
+        local targetPos, onScreen = Camera:WorldToViewportPoint(silentAimTarget.Head.Position)
+        if onScreen then
+            local center = Camera.ViewportSize / 2
+            local moveX = (targetPos.X - center.X) / AIM_SMOOTHNESS
+            local moveY = (targetPos.Y - center.Y) / AIM_SMOOTHNESS
+            moveX = moveX + math.random(-1, 1) * 0.2; moveY = moveY + math.random(-1, 1) * 0.2
+            if mousemoverel then pcall(function() mousemoverel(moveX, moveY) end) end
+        end
+    end
+
+    if isTriggerBotActive then
+        local target = Mouse.Target
+        if target and target.Parent then
+            local char = target:FindFirstAncestorOfClass("Model")
+            if char and char:FindFirstChild("Humanoid") and char ~= LocalPlayer.Character then
+                local p = Players:GetPlayerFromCharacter(char)
+                if p and not ignoredPlayers[p.UserId] and char.Humanoid.Health > 0 then
+                    if tick() - lastClickTime > TRIGGER_DELAY then
+                        lastClickTime = tick()
+                        if mouse1click then pcall(function() mouse1click() end) end
+                    end
+                end
+            end
+        end
+    end
+end)
+
+_G.MyPhysicsLoop = RunService.Stepped:Connect(function()
+    local char = LocalPlayer.Character
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    local hum = char and char:FindFirstChild("Humanoid")
+    if not hrp or not hum or hum.Health <= 0 then return end
+
+    if isNoclip then for _, part in ipairs(char:GetDescendants()) do if part:IsA("BasePart") then part.CanCollide = false end end end
+    if not isFlying and not isMagnetActive and not isHitAndRunActive then
+        for _, part in ipairs(char:GetDescendants()) do if part:IsA("BasePart") then part.AssemblyAngularVelocity = Vector3.new(0,0,0) end end
+    end
+
+    if isHitAndRunActive then
+        if not hasSavedCFrame then safeCFrame = hrp.CFrame; hasSavedCFrame = true end
+        if isAttacking then
+            if silentAimTarget and silentAimTarget:FindFirstChild("Head") then
+                hrp.CFrame = CFrame.new(silentAimTarget.Head.Position + Vector3.new(0, 2, 0)) * CFrame.Angles(math.rad(-90), 0, 0)
+            else hrp.CFrame = CFrame.new(voidPlatforms[1] + Vector3.new(0, 5, 0)) end
+        else 
+            hrp.CFrame = CFrame.new(voidPlatforms[math.floor(os.clock() * 8) % 4 + 1] + Vector3.new(0, 5, 0)) 
+        end
+        hrp.AssemblyLinearVelocity = Vector3.new(0, 0, 0); return
+    else
+        if hasSavedCFrame then if safeCFrame then hrp.CFrame = safeCFrame end; hasSavedCFrame = false end
+    end
+
+    if isMagnetActive then
+        local targetEnemy = getClosestEnemy() 
+        if targetEnemy and targetEnemy:FindFirstChild("HumanoidRootPart") and targetEnemy.Humanoid.Health > 0 then
+            local targetHrp = targetEnemy.HumanoidRootPart
+            if (targetHrp.Position - hrp.Position).Magnitude <= MAX_ATTACK_RANGE then
+                local targetPoint = targetHrp.Position + (targetHrp.CFrame.LookVector * -BEHIND_OFFSET)
+                hrp.CFrame = CFrame.new(targetPoint)
+                hrp.CFrame = CFrame.lookAt(hrp.Position, targetHrp.Position)
+                hrp.AssemblyLinearVelocity = Vector3.new(0, 0, 0); return 
+            end
+        end
+        isMagnetActive = false; hrp.AssemblyLinearVelocity = Vector3.new(0, 0, 0) 
+        task.defer(function() updatePhysicsState(); updateUI() end) 
+    end
+
+    if isFlying then
+        local moveDir = Vector3.new(0, 0, 0)
+        if UserInputService:IsKeyDown(Enum.KeyCode.W) then moveDir = moveDir + Camera.CFrame.LookVector end
+        if UserInputService:IsKeyDown(Enum.KeyCode.S) then moveDir = moveDir - Camera.CFrame.LookVector end
+        if UserInputService:IsKeyDown(Enum.KeyCode.A) then moveDir = moveDir - Camera.CFrame.RightVector end
+        if UserInputService:IsKeyDown(Enum.KeyCode.D) then moveDir = moveDir + Camera.CFrame.RightVector end
+        if UserInputService:IsKeyDown(Enum.KeyCode.Space) then moveDir = moveDir + Vector3.new(0, 1, 0) end
+        if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) then moveDir = moveDir - Vector3.new(0, 1, 0) end
+        local thumbstickDir = hum.MoveDirection
+        if thumbstickDir.Magnitude > 0 then moveDir = moveDir + thumbstickDir end
+        hrp.AssemblyLinearVelocity = moveDir.Magnitude > 0 and (moveDir.Unit * FLY_SPEED) or Vector3.new(0, 0, 0) 
+    end
+end)
+
+local chamsFolder = Instance.new("Folder", workspace); chamsFolder.Name = "MyESPChams"; _G.MyChamsFolder = chamsFolder
+_G.MyESPLoop = RunService.Heartbeat:Connect(function()
+    pcall(function()
+        for _, p in ipairs(Players:GetPlayers()) do
+            if p == LocalPlayer then continue end
+            local char = p.Character
+            if ignoredPlayers[p.UserId] or not char or not char:FindFirstChild("Humanoid") or char.Humanoid.Health <= 0 then
+                if chamsFolder:FindFirstChild(p.Name) then chamsFolder[p.Name]:Destroy() end; continue
+            end
+            if char:FindFirstChild("Head") and char:FindFirstChild("Humanoid") then
+                local highlight = chamsFolder:FindFirstChild(p.Name)
+                if not highlight then
+                    highlight = Instance.new("Highlight", chamsFolder); highlight.Name = p.Name; highlight.Adornee = char
+                    highlight.FillColor = Color3.fromRGB(255, 0, 0); highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+                    highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+                else highlight.Adornee = char end
+            end
+        end
+    end)
+end)
+
+updateUI()
