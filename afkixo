@@ -1,6 +1,4 @@
--- ==========================================================
--- 🌌 星輝商業發行版 (純淨明碼版 - 包含防斷線驗證與手機優化)
--- ==========================================================
+
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -11,10 +9,8 @@ local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 local Mouse = LocalPlayer:GetMouse()
 
--- ==========================================
--- 🔐 1. 強化版抗延遲驗證系統 (三段式掃描)
--- ==========================================
-local OWNER_ID = 4156480207 -- 🔥🔥🔥 記得把這裡改成 blusshop_trade 的真實數字 ID
+
+local OWNER_ID = 4156480207 
 local OWNER_NAME = "blusshop_trade"
 
 local myName = LocalPlayer.Name
@@ -42,11 +38,9 @@ if not isOwner and not isFriend then
     return 
 end
 
-print("✅ 驗證通過！歡迎回來，" .. (isOwner and "最高主宰 " .. myName .. "！" or "尊貴的 VIP 客戶！"))
+print("驗證通過！歡迎回來，" .. (isOwner and "最高主宰 " .. myName .. "！" or "尊貴的 VIP 客戶！"))
 
--- ==========================================
--- 🧹 2. 系統清理與初始化
--- ==========================================
+
 local function cleanConn(name) if _G[name] then pcall(function() _G[name]:Disconnect() end); _G[name] = nil end end
 cleanConn("MyESPLoop"); cleanConn("MyActionBtns"); cleanConn("MyPhysicsLoop")
 cleanConn("MyTargetCacheLoop"); cleanConn("MyUIToggle"); cleanConn("MySliderCleaner") 
@@ -80,8 +74,12 @@ local ignoredPlayers, silentAimTarget, safeCFrame, hasSavedCFrame, lastClickTime
 local function updatePhysicsState()
     local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid")
     if hum and hum.Health > 0 then
-        if isFlying or isMagnetActive or (isHitAndRunActive and isAttacking) then hum:ChangeState(Enum.HumanoidStateType.Physics)
-        else hum:ChangeState(Enum.HumanoidStateType.GettingUp) end
+       
+        if isFlying or isMagnetActive or isHitAndRunActive or isAttacking then 
+            hum:ChangeState(Enum.HumanoidStateType.Physics)
+        else 
+            hum:ChangeState(Enum.HumanoidStateType.GettingUp) 
+        end
     end
 end
 
@@ -97,9 +95,7 @@ _G.MyCharRespawn = LocalPlayer.CharacterAdded:Connect(function()
     isHitAndRunActive, isTriggerBotActive, isAttacking = false, false, false; silentAimTarget = nil
 end)
 
--- ==========================================
--- 📱 3. 全平台通用 GUI (包含手機版優化)
--- ==========================================
+
 local screenGui = Instance.new("ScreenGui"); screenGui.Name = "MyControlPanel"; screenGui.ResetOnSpawn = false
 pcall(function() screenGui.Parent = game:GetService("CoreGui") end)
 if not screenGui.Parent then screenGui.Parent = LocalPlayer:WaitForChild("PlayerGui") end
@@ -127,7 +123,7 @@ title.Text = "星輝商業版 (滑動查看)"
 local scrollFrame = Instance.new("ScrollingFrame", mainFrame)
 scrollFrame.Size = UDim2.new(1, 0, 1, -30); scrollFrame.Position = UDim2.new(0, 0, 0, 30)
 scrollFrame.BackgroundTransparency = 1; scrollFrame.ScrollBarThickness = 4
-scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 650) -- 🔥 手機版防壓扁，高度拉長到 650
+scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 650) 
 
 local function createButton(name, hotkeyText, yPos)
     local btn = Instance.new("TextButton", scrollFrame)
@@ -243,9 +239,7 @@ _G.MyActionBtns = UserInputService.InputBegan:Connect(function(input, gp)
     if key ~= Enum.KeyCode.Z and key ~= Enum.KeyCode.M then updateUI() end
 end)
 
--- ==========================================
--- 🎯 4. 渲染層與物理層
--- ==========================================
+
 local function isValidTarget(char, requireOnScreen)
     if not char then return false end
     local hum = char:FindFirstChild("Humanoid"); local head = char:FindFirstChild("Head")
