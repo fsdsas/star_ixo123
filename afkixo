@@ -1,4 +1,6 @@
-
+-- ==========================================================
+-- 🌌 星輝商業發行版 (終極破壞版 - 包含血滴子與手機優化)
+-- ==========================================================
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -9,7 +11,9 @@ local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 local Mouse = LocalPlayer:GetMouse()
 
-
+-- ==========================================
+-- 🔐 1. 強化版抗延遲驗證系統 (三段式掃描)
+-- ==========================================
 local OWNER_ID = 4156480207 
 local OWNER_NAME = "blusshop_trade"
 
@@ -38,9 +42,11 @@ if not isOwner and not isFriend then
     return 
 end
 
-print("驗證通過！歡迎回來，" .. (isOwner and "最高主宰 " .. myName .. "！" or "尊貴的 VIP 客戶！"))
+print("✅ 驗證通過！歡迎回來，" .. (isOwner and "最高主宰 " .. myName .. "！" or "尊貴的 VIP 客戶！"))
 
-
+-- ==========================================
+-- 🧹 2. 系統清理與初始化
+-- ==========================================
 local function cleanConn(name) if _G[name] then pcall(function() _G[name]:Disconnect() end); _G[name] = nil end end
 cleanConn("MyESPLoop"); cleanConn("MyActionBtns"); cleanConn("MyPhysicsLoop")
 cleanConn("MyTargetCacheLoop"); cleanConn("MyUIToggle"); cleanConn("MySliderCleaner") 
@@ -68,13 +74,43 @@ end
 
 local isNoclip, isFlying, isMagnetActive, isHitAndRunActive, isAttacking = false, false, false, false, false
 local isAimbotActive, isTriggerBotActive = false, false
+local isFlingAuraActive = false
+local flingLimbs = {}
+local AURA_RADIUS = 8
+local AURA_SPEED = 10
+
 local FLY_SPEED, AIMBOT_FOV, MAX_ATTACK_RANGE, AIM_SMOOTHNESS, TRIGGER_DELAY, BEHIND_OFFSET = 300, 150, 440, 8, 0.05, 4
 local ignoredPlayers, silentAimTarget, safeCFrame, hasSavedCFrame, lastClickTime = {}, nil, nil, false, 0
+
+local function toggleFlingAura()
+    isFlingAuraActive = not isFlingAuraActive
+    local char = LocalPlayer.Character
+    if not char then return end
+
+    if isFlingAuraActive then
+        flingLimbs = {}
+        for _, part in ipairs(char:GetChildren()) do
+            -- 排除關鍵部位，確保攝影機不抖動
+            if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" and part.Name ~= "Head" and part.Name ~= "Torso" and part.Name ~= "UpperTorso" then
+                for _, joint in ipairs(part:GetDescendants()) do
+                    if joint:IsA("Motor6D") or joint:IsA("Weld") then
+                        -- ⚡ 全服同步關鍵：斷開但不銷毀
+                        joint.Part0 = nil 
+                    end
+                end
+                part.CanCollide = true
+                table.insert(flingLimbs, part)
+            end
+        end
+    else
+        flingLimbs = {} -- 關閉後需重置角色
+    end
+end
 
 local function updatePhysicsState()
     local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid")
     if hum and hum.Health > 0 then
-       
+        -- 🚀 加入 isAttacking，確保 M 鍵獨立使用時也不會掉下去
         if isFlying or isMagnetActive or isHitAndRunActive or isAttacking then 
             hum:ChangeState(Enum.HumanoidStateType.Physics)
         else 
@@ -93,9 +129,12 @@ end
 _G.MyCharRespawn = LocalPlayer.CharacterAdded:Connect(function()
     isMagnetActive, isFlying, isNoclip, isAimbotActive = false, false, false, false
     isHitAndRunActive, isTriggerBotActive, isAttacking = false, false, false; silentAimTarget = nil
+    isFlingAuraActive = false; flingLimbs = {} -- 死亡後重置血滴子
 end)
 
-
+-- ==========================================
+-- 📱 3. 全平台通用 GUI 
+-- ==========================================
 local screenGui = Instance.new("ScreenGui"); screenGui.Name = "MyControlPanel"; screenGui.ResetOnSpawn = false
 pcall(function() screenGui.Parent = game:GetService("CoreGui") end)
 if not screenGui.Parent then screenGui.Parent = LocalPlayer:WaitForChild("PlayerGui") end
@@ -123,7 +162,7 @@ title.Text = "星輝商業版 (滑動查看)"
 local scrollFrame = Instance.new("ScrollingFrame", mainFrame)
 scrollFrame.Size = UDim2.new(1, 0, 1, -30); scrollFrame.Position = UDim2.new(0, 0, 0, 30)
 scrollFrame.BackgroundTransparency = 1; scrollFrame.ScrollBarThickness = 4
-scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 650) 
+scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 680) -- 🔥 為新增的按鈕加長到 680 避免手機壓扁
 
 local function createButton(name, hotkeyText, yPos)
     local btn = Instance.new("TextButton", scrollFrame)
@@ -165,12 +204,13 @@ local btnC = createButton("無重力飛天", "C", 90)
 local btnV = createButton("絕對瞬移背刺", "V", 130)
 local btnG = createButton("量子虛空待命", "G", 170) 
 local btnM = createButton("空降鎖定打擊", "M", 210)
-local btnF = createButton("平滑軌跡自瞄", "F", 250) 
-local btnT = createButton("死神自動扳機", "T", 290) 
+local btnB = createButton("血滴子死亡光環", "B", 250) 
+local btnF = createButton("平滑軌跡自瞄", "F", 290) 
+local btnT = createButton("死神自動扳機", "T", 330) 
 
-createSlider("FOVX 視覺範圍", 50, 500, AIMBOT_FOV, 335, function(val) AIMBOT_FOV = val; FOVCircle.Radius = val end)
-createSlider("AI 平滑擬真度", 1, 20, AIM_SMOOTHNESS, 385, function(val) AIM_SMOOTHNESS = val end) 
-createSlider("扳機連發延遲", 10, 200, TRIGGER_DELAY * 1000, 435, function(val) TRIGGER_DELAY = val / 1000 end) 
+createSlider("FOVX 視覺範圍", 50, 500, AIMBOT_FOV, 375, function(val) AIMBOT_FOV = val; FOVCircle.Radius = val end)
+createSlider("AI 平滑擬真度", 1, 20, AIM_SMOOTHNESS, 425, function(val) AIM_SMOOTHNESS = val end) 
+createSlider("扳機連發延遲", 10, 200, TRIGGER_DELAY * 1000, 475, function(val) TRIGGER_DELAY = val / 1000 end) 
 
 local function updateUI()
     local cOn = Color3.fromRGB(50, 180, 50); local cOff = Color3.fromRGB(180, 50, 50)
@@ -181,41 +221,57 @@ local function updateUI()
     btnV.BackgroundColor3 = isMagnetActive and cOn or cOff; btnV.Text = "V : 瞬移背刺 " .. (isMagnetActive and "[開]" or "[關]")
     btnG.BackgroundColor3 = isHitAndRunActive and cOn or cOff; btnG.Text = "G : 量子虛空 " .. (isHitAndRunActive and "[開]" or "[關]")
     btnM.BackgroundColor3 = isAttacking and cAttack or cOff; btnM.Text = "M : 空降打擊 " .. (isAttacking and "[鎖定中]" or "[待命]")
+    btnB.BackgroundColor3 = isFlingAuraActive and cAttack or cOff; btnB.Text = "B : 血滴子光環 " .. (isFlingAuraActive and "[絞殺中]" or "[關]")
     btnF.BackgroundColor3 = isAimbotActive and cOn or cOff; btnF.Text = "F : 平滑自瞄 " .. (isAimbotActive and "[開]" or "[關]")
     btnT.BackgroundColor3 = isTriggerBotActive and cTrigger or cOff; btnT.Text = "T : 自動扳機 " .. (isTriggerBotActive and "[警戒]" or "[關]")
 end
 
-local function toggleIgnoreTarget()
-    local centerPos = Camera.ViewportSize / 2; local closestChar, shortestDist = nil, AIMBOT_FOV
-    for _, p in ipairs(Players:GetPlayers()) do
-        if p ~= LocalPlayer and p.Character then
-            local head = p.Character:FindFirstChild("Head")
-            if head then
-                local pos, onScreen = Camera:WorldToViewportPoint(head.Position)
-                if onScreen then
-                    local dist = (Vector2.new(pos.X, pos.Y) - centerPos).Magnitude
-                    if dist < shortestDist then shortestDist = dist; closestChar = p.Character end
+-- ==========================================
+local function toggleFlingAura()
+    isFlingAuraActive = not isFlingAuraActive
+    local char = LocalPlayer.Character
+    if not char then return end
+
+    if isFlingAuraActive then
+        flingLimbs = {}
+        -- 遍歷所有肢體
+        for _, part in ipairs(char:GetChildren()) do
+            if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" and part.Name ~= "Head" and part.Name ~= "Torso" then
+                
+                -- 核心：不刪除，而是暫時斷開連接
+                for _, joint in ipairs(part:GetDescendants()) do
+                    if joint:IsA("Motor6D") or joint:IsA("Weld") then
+                        joint.Part0 = nil -- 斷開 Part0，伺服器會認為零件掉了，但仍由你模擬物理
+                    end
+                end
+                
+                part.CanCollide = true -- 必須開啟碰撞，否則撞不到人
+                part.Velocity = Vector3.new(0, 0, 0)
+                table.insert(flingLimbs, part)
+            end
+        end
+    else
+        -- 恢復關節
+        for _, part in ipairs(char:GetChildren()) do
+            for _, joint in ipairs(part:GetDescendants()) do
+                if joint:IsA("Motor6D") then
+                    -- 這裡比較麻煩，因為斷開後很難完美接回
+                    -- 建議發行版直接告知玩家：關閉後需重置 (Reset)
                 end
             end
         end
-    end
-    if closestChar then
-        local p = Players:GetPlayerFromCharacter(closestChar)
-        if p then 
-            ignoredPlayers[p.UserId] = not ignoredPlayers[p.UserId] 
-            if ignoredPlayers[p.UserId] then btnZ.Text = "保護中: " .. p.Name; btnZ.BackgroundColor3 = Color3.fromRGB(50, 180, 50) 
-            else btnZ.Text = "已移除: " .. p.Name; btnZ.BackgroundColor3 = Color3.fromRGB(180, 50, 50) end
-            task.delay(1.5, function() btnZ.Text = "Z : 標記準心目標"; btnZ.BackgroundColor3 = Color3.fromRGB(80, 80, 80) end)
-        end
+        flingLimbs = {}
     end
 end
 
--- 手機觸控按鈕綁定 (獨立執行，不檢查鍵盤)
+
+-- 手機觸控按鈕綁定
 btnX.MouseButton1Click:Connect(function() toggleNoclip(); updateUI() end)
 btnC.MouseButton1Click:Connect(function() isFlying = not isFlying; updatePhysicsState(); updateUI() end)
 btnV.MouseButton1Click:Connect(function() isMagnetActive = not isMagnetActive; updatePhysicsState(); updateUI() end)
 btnG.MouseButton1Click:Connect(function() isHitAndRunActive = not isHitAndRunActive; updatePhysicsState(); updateUI() end)
 btnM.MouseButton1Click:Connect(function() isAttacking = not isAttacking; updatePhysicsState(); updateUI() end) 
+btnB.MouseButton1Click:Connect(function() toggleFlingAura(); updateUI() end)
 btnF.MouseButton1Click:Connect(function() isAimbotActive = not isAimbotActive; updateUI() end)
 btnT.MouseButton1Click:Connect(function() isTriggerBotActive = not isTriggerBotActive; updateUI() end)
 btnZ.MouseButton1Click:Connect(toggleIgnoreTarget)
@@ -233,13 +289,16 @@ _G.MyActionBtns = UserInputService.InputBegan:Connect(function(input, gp)
     elseif key == Enum.KeyCode.V then isMagnetActive = not isMagnetActive; updatePhysicsState()
     elseif key == Enum.KeyCode.G then isHitAndRunActive = not isHitAndRunActive; updatePhysicsState()
     elseif key == Enum.KeyCode.M then isAttacking = not isAttacking; updatePhysicsState() 
+    elseif key == Enum.KeyCode.B then toggleFlingAura()
     elseif key == Enum.KeyCode.F then isAimbotActive = not isAimbotActive
     elseif key == Enum.KeyCode.T then isTriggerBotActive = not isTriggerBotActive
     end
-    if key ~= Enum.KeyCode.Z and key ~= Enum.KeyCode.M then updateUI() end
+    if key ~= Enum.KeyCode.Z and key ~= Enum.KeyCode.M and key ~= Enum.KeyCode.B then updateUI() end
 end)
 
-
+-- ==========================================
+-- 🎯 4. 渲染層與物理層
+-- ==========================================
 local function isValidTarget(char, requireOnScreen)
     if not char then return false end
     local hum = char:FindFirstChild("Humanoid"); local head = char:FindFirstChild("Head")
@@ -326,19 +385,43 @@ _G.MyPhysicsLoop = RunService.Stepped:Connect(function()
     local hum = char and char:FindFirstChild("Humanoid")
     if not hrp or not hum or hum.Health <= 0 then return end
 
+    -- 🩸 穩定同步版血滴子物理
+    if isFlingAuraActive and #flingLimbs > 0 then
+        local t = os.clock() * AURA_SPEED
+        for i, limb in ipairs(flingLimbs) do
+            local angle = t + (i * (math.pi * 2 / #flingLimbs))
+            local offset = Vector3.new(math.cos(angle) * AURA_RADIUS, 0, math.sin(angle) * AURA_RADIUS)
+            limb.CFrame = hrp.CFrame + offset
+            
+            -- ⚡ 撞飛別人的關鍵推力 (降到 8000 避免被系統吃掉座標)
+            limb.AssemblyLinearVelocity = offset.Unit * 8000 + Vector3.new(0, 5000, 0)
+            limb.AssemblyAngularVelocity = Vector3.new(8000, 8000, 8000)
+        end
+        
+        -- 🔒 本體物理鎖定：防止自己被反作用力彈飛
+        hrp.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+        hrp.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
+    end
+
     if isNoclip then for _, part in ipairs(char:GetDescendants()) do if part:IsA("BasePart") then part.CanCollide = false end end end
-    if not isFlying and not isMagnetActive and not isHitAndRunActive then
+    
+    -- 🚀 M 鍵解綁，加入判定
+    if not isFlying and not isMagnetActive and not isHitAndRunActive and not isAttacking then
         for _, part in ipairs(char:GetDescendants()) do if part:IsA("BasePart") then part.AssemblyAngularVelocity = Vector3.new(0,0,0) end end
     end
 
-    if isHitAndRunActive then
+    -- 🚀 G 或 M 任一開啟時的邏輯解綁
+    if isHitAndRunActive or isAttacking then
         if not hasSavedCFrame then safeCFrame = hrp.CFrame; hasSavedCFrame = true end
+        
         if isAttacking then
             local target = silentAimTarget
             if not isValidTarget(target, false) then target = getClosestEnemy() end
             if target and target:FindFirstChild("Head") then
                 hrp.CFrame = CFrame.new(target.Head.Position + Vector3.new(0, 2, 0)) * CFrame.Angles(math.rad(-90), 0, 0)
-            else hrp.CFrame = CFrame.new(voidPlatforms[1] + Vector3.new(0, 5, 0)) end
+            elseif isHitAndRunActive then
+                hrp.CFrame = CFrame.new(voidPlatforms[1] + Vector3.new(0, 5, 0)) 
+            end
         else 
             hrp.CFrame = CFrame.new(voidPlatforms[math.floor(os.clock() * 8) % 4 + 1] + Vector3.new(0, 5, 0)) 
         end
