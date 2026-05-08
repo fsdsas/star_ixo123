@@ -275,6 +275,7 @@ end)
 _G.MyActionBtns = UserInputService.InputBegan:Connect(function(input, gp)
     if gp then return end
     local key = input.KeyCode
+    
     if key == Enum.KeyCode.Z then toggleIgnoreTarget()
     elseif key == Enum.KeyCode.X then toggleNoclip()
     elseif key == Enum.KeyCode.C then isFlying = not isFlying; updatePhysicsState()
@@ -284,9 +285,11 @@ _G.MyActionBtns = UserInputService.InputBegan:Connect(function(input, gp)
     elseif key == Enum.KeyCode.B then toggleFlingAura()
     elseif key == Enum.KeyCode.F then isAimbotActive = not isAimbotActive
     elseif key == Enum.KeyCode.T then isTriggerBotActive = not isTriggerBotActive
-    elseif key == Enum.KeyCode.Y then isFullBrightActive = not isFullBrightActive
+    elseif key == Enum.KeyCode.Y then isFullBrightActive = not isFullBrightActive -- 新增的夜視快捷鍵
     end
-    if key ~= Enum.KeyCode.Z and key ~= Enum.KeyCode.M and key ~= Enum.KeyCode.B then updateUI() end
+    
+    
+    updateUI()
 end)
 
 
