@@ -360,17 +360,31 @@ _G.MyTargetCacheLoop = RunService.RenderStepped:Connect(function()
     else silentAimTarget = nil end
 end)
 RunService:BindToRenderStep("MyMouseAimLoop", Enum.RenderPriority.Camera.Value + 1, function()
+    -- 🎯 雙平台通用自瞄
     if isAimbotActive and silentAimTarget and silentAimTarget:FindFirstChild("Head") then
-        local targetPos, onScreen = Camera:WorldToViewportPoint(silentAimTarget.Head.Position)
+        local headPos = silentAimTarget.Head.Position
+        local targetPos, onScreen = Camera:WorldToViewportPoint(headPos)
+        
         if onScreen then
-            local center = Camera.ViewportSize / 2
-            local moveX = (targetPos.X - center.X) / AIM_SMOOTHNESS
-            local moveY = (targetPos.Y - center.Y) / AIM_SMOOTHNESS
-            moveX = moveX + math.random(-1, 1) * 0.2; moveY = moveY + math.random(-1, 1) * 0.2
-            if mousemoverel then pcall(function() mousemoverel(moveX, moveY) end) end
+            if mousemoverel then
+                -- 💻 電腦版：使用滑鼠平滑移動
+                local center = Camera.ViewportSize / 2
+                local moveX = (targetPos.X - center.X) / AIM_SMOOTHNESS
+                local moveY = (targetPos.Y - center.Y) / AIM_SMOOTHNESS
+                moveX = moveX + math.random(-1, 1) * 0.2; moveY = moveY + math.random(-1, 1) * 0.2
+                pcall(function() mousemoverel(moveX, moveY) end)
+            else
+                
+                local currentCFrame = Camera.CFrame
+                
+                local targetCFrame = CFrame.lookAt(currentCFrame.Position, headPos)
+                
+                Camera.CFrame = currentCFrame:Lerp(targetCFrame, 0.5 / AIM_SMOOTHNESS)
+            end
         end
     end
 
+    
     if isTriggerBotActive then
         local target = Mouse.Target
         if target and target.Parent then
