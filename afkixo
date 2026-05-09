@@ -287,13 +287,18 @@ _G.MyTargetCacheLoop = RunService.RenderStepped:Connect(function()
     if isCamLockActive and silentAimTarget and silentAimTarget:FindFirstChild("Head") then
         local enemyHead = silentAimTarget.Head
         Camera.CameraType = Enum.CameraType.Scriptable
-        Camera.CFrame = CFrame.new(enemyHead.Position + Vector3.new(0, 2, 0), enemyHead.Position + enemyHead.CFrame.LookVector * 5)
+        Camera.CFrame = CFrame.new(enemyHead.Position + Vector3.new(0, 3, 5), enemyHead.Position)
     else
         if Camera.CameraType == Enum.CameraType.Scriptable then
             Camera.CameraType = Enum.CameraType.Custom
+            
+            local char = LocalPlayer.Character
+            local hum = char and char:FindFirstChild("Humanoid")
+            if hum then
+                Camera.CameraSubject = hum
+            end
         end
     end
-end)
 
 RunService:BindToRenderStep("MyMouseAimLoop", Enum.RenderPriority.Camera.Value + 1, function()
     if isAimbotActive and silentAimTarget and silentAimTarget:FindFirstChild("Head") then
