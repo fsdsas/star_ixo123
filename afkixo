@@ -1,48 +1,46 @@
-
+-- ==========================================================
+-- 🌌 星輝商業發行版 (暴力轉向 & 視角定位 & 全服血滴子)
+-- ==========================================================
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
 local Debris = game:GetService("Debris")
+local Lighting = game:GetService("Lighting")
 local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 local Mouse = LocalPlayer:GetMouse()
-local Lighting = game:GetService("Lighting")
-local isFlickAimActive, isCamLockActive = false, false 
 
-local function toggleFlickAim() isFlickAimActive = not isFlickAimActive end
-local function toggleCamLock() isCamLockActive = not isCamLockActive end
+-- ==========================================
+-- 🔐 1. 終極防呆驗證系統 (雙重保險)
+-- ==========================================
 local OWNER_ID = 4156480207 
 local OWNER_NAME = "blusshop_trade"
 
 local myName = LocalPlayer.Name
 local myID = LocalPlayer.UserId
-local isOwner = (myID == OWNER_ID)
+local isOwner = (myName == OWNER_NAME or myID == OWNER_ID)
 local isFriend = false
-local isFullBrightActive = false
+
 if not isOwner then
-    -- 嘗試 3 次驗證，每次間隔 0.5 秒，防止網路瞬間抽風
     for i = 1, 3 do
-        local success, result = pcall(function() 
-            return LocalPlayer:IsFriendsWith(OWNER_ID) 
-        end)
-        
-        if success and result == true then
-            isFriend = true
-            break -- 成功就跳出迴圈
-        end
+        local success, result = pcall(function() return LocalPlayer:IsFriendsWith(OWNER_ID) end)
+        if success and result == true then isFriend = true; break end
         task.wait(0.5) 
     end
 end
 
 if not isOwner and not isFriend then
-    LocalPlayer:Kick("\n【星輝系統】驗證失敗！\n1. 請確認已加作者 ("..OWNER_NAME..") 為好友。\n2. 若剛加好友，請等待 1 分鐘後再試。\n您的帳號: " .. myName)
+    LocalPlayer:Kick("\n【星輝系統】驗證失敗！\n1. 請確認已加作者 ("..OWNER_NAME..") 為好友。\n您的帳號: " .. myName)
     return 
 end
 
-print("驗證通過！歡迎回來，" .. (isOwner and "最高主宰 " .. myName .. "！" or "尊貴的 VIP 客戶！"))
+print("✅ 驗證通過！最高主宰: " .. myName)
 
+-- ==========================================
+-- 🧹 2. 系統清理與初始化
+-- ==========================================
 local function cleanConn(name) if _G[name] then pcall(function() _G[name]:Disconnect() end); _G[name] = nil end end
 cleanConn("MyESPLoop"); cleanConn("MyActionBtns"); cleanConn("MyPhysicsLoop")
 cleanConn("MyTargetCacheLoop"); cleanConn("MyUIToggle"); cleanConn("MySliderCleaner") 
@@ -60,21 +58,19 @@ local voidPlatforms = {}
 local platformOffsets = { Vector3.new(0, 50000, 0), Vector3.new(2000, 50000, 0), Vector3.new(0, 50000, 2000), Vector3.new(2000, 50000, 2000) }
 for i, pos in ipairs(platformOffsets) do
     local pName = "MyVoidPlatform_" .. i
-    local plat = workspace:FindFirstChild(pName)
-    if not plat then
-        plat = Instance.new("Part"); plat.Name = pName; plat.Size = Vector3.new(100, 5, 100); plat.Position = pos
-        plat.Anchored = true; plat.Transparency = 1; plat.CanCollide = true; plat.Parent = workspace
-    end
+    local plat = workspace:FindFirstChild(pName) or Instance.new("Part")
+    plat.Name = pName; plat.Size = Vector3.new(100, 5, 100); plat.Position = pos; plat.Anchored = true; plat.Transparency = 1; plat.Parent = workspace
     voidPlatforms[i] = pos
 end
 
+-- ==========================================
+-- ⚙️ 3. 變數與核心邏輯
+-- ==========================================
 local isNoclip, isFlying, isMagnetActive, isHitAndRunActive, isAttacking = false, false, false, false, false
-local isAimbotActive, isTriggerBotActive = false, false
-local isFlingAuraActive = false
+local isAimbotActive, isTriggerBotActive, isFlingAuraActive = false, false, false
+local isFullBrightActive, isFlickAimActive, isCamLockActive = false, false, false
 local flingLimbs = {}
-local AURA_RADIUS = 8
-local AURA_SPEED = 10
-
+local AURA_RADIUS, AURA_SPEED = 12, 15 
 local FLY_SPEED, AIMBOT_FOV, MAX_ATTACK_RANGE, AIM_SMOOTHNESS, TRIGGER_DELAY, BEHIND_OFFSET = 300, 150, 440, 8, 0.05, 4
 local ignoredPlayers, silentAimTarget, safeCFrame, hasSavedCFrame, lastClickTime = {}, nil, nil, false, 0
 
@@ -86,11 +82,9 @@ local function toggleFlingAura()
     if isFlingAuraActive then
         flingLimbs = {}
         for _, part in ipairs(char:GetChildren()) do
-            
             if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" and part.Name ~= "Head" and part.Name ~= "Torso" and part.Name ~= "UpperTorso" then
                 for _, joint in ipairs(part:GetDescendants()) do
                     if joint:IsA("Motor6D") or joint:IsA("Weld") then
-                        
                         joint.Part0 = nil 
                     end
                 end
@@ -99,18 +93,21 @@ local function toggleFlingAura()
             end
         end
     else
-        flingLimbs = {} 
+        flingLimbs = {}
     end
 end
+
+local function toggleFlickAim() isFlickAimActive = not isFlickAimActive end
+local function toggleCamLock() isCamLockActive = not isCamLockActive end
 
 local function updatePhysicsState()
     local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid")
     if hum and hum.Health > 0 then
-        
-        if isFlying or isMagnetActive or isHitAndRunActive or isAttacking then 
+        if isFlying or isMagnetActive or isHitAndRunActive or isAttacking or isFlingAuraActive then 
             hum:ChangeState(Enum.HumanoidStateType.Physics)
         else 
-            hum:ChangeState(Enum.HumanoidStateType.GettingUp) 
+            -- ✅ 隱蔽性修復：改回 None，避免別人看到殭屍滑步
+            hum:ChangeState(Enum.HumanoidStateType.None) 
         end
     end
 end
@@ -124,11 +121,14 @@ end
 
 _G.MyCharRespawn = LocalPlayer.CharacterAdded:Connect(function()
     isMagnetActive, isFlying, isNoclip, isAimbotActive = false, false, false, false
-    isHitAndRunActive, isTriggerBotActive, isAttacking = false, false, false; silentAimTarget = nil
-    isFlingAuraActive = false; flingLimbs = {} 
+    isHitAndRunActive, isTriggerBotActive, isAttacking, isFlingAuraActive = false, false, false, false
+    isFlickAimActive, isCamLockActive = false, false
+    flingLimbs = {}; silentAimTarget = nil
 end)
 
-
+-- ==========================================
+-- 📱 4. UI 介面
+-- ==========================================
 local screenGui = Instance.new("ScreenGui"); screenGui.Name = "MyControlPanel"; screenGui.ResetOnSpawn = false
 pcall(function() screenGui.Parent = game:GetService("CoreGui") end)
 if not screenGui.Parent then screenGui.Parent = LocalPlayer:WaitForChild("PlayerGui") end
@@ -138,25 +138,18 @@ local mobileToggleBtn = Instance.new("TextButton", screenGui)
 mobileToggleBtn.Size = UDim2.new(0, 45, 0, 45); mobileToggleBtn.Position = UDim2.new(0, 10, 0.5, -22)
 mobileToggleBtn.BackgroundColor3 = Color3.fromRGB(20, 20, 20); mobileToggleBtn.BorderColor3 = Color3.fromRGB(0, 255, 255)
 mobileToggleBtn.BorderSizePixel = 2; mobileToggleBtn.TextColor3 = Color3.fromRGB(0, 255, 255)
-mobileToggleBtn.Font = Enum.Font.GothamBold; mobileToggleBtn.TextSize = 12
-mobileToggleBtn.Text = "星輝\n開關"; mobileToggleBtn.Active = true; mobileToggleBtn.Draggable = true 
+mobileToggleBtn.Font = Enum.Font.GothamBold; mobileToggleBtn.TextSize = 12; mobileToggleBtn.Text = "星輝\n開關"; mobileToggleBtn.Draggable = true 
 
 local mainFrame = Instance.new("Frame", screenGui)
 mainFrame.Size = UDim2.new(0, 240, 0.6, 0); mainFrame.Position = UDim2.new(0.5, 0, 0.2, 0)
-mainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20); mainFrame.BorderSizePixel = 1; mainFrame.BorderColor3 = Color3.fromRGB(0, 255, 255)
-mainFrame.Active = true; mainFrame.Draggable = true 
+mainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20); mainFrame.BorderSizePixel = 1; mainFrame.BorderColor3 = Color3.fromRGB(0, 255, 255); mainFrame.Draggable = true 
 
 mobileToggleBtn.MouseButton1Click:Connect(function() mainFrame.Visible = not mainFrame.Visible end)
-
-local title = Instance.new("TextLabel", mainFrame)
-title.Size = UDim2.new(1, 0, 0, 30); title.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
-title.TextColor3 = Color3.fromRGB(0, 255, 255); title.Font = Enum.Font.GothamBold; title.TextSize = 13
-title.Text = "星輝商業版 (滑動查看)"
 
 local scrollFrame = Instance.new("ScrollingFrame", mainFrame)
 scrollFrame.Size = UDim2.new(1, 0, 1, -30); scrollFrame.Position = UDim2.new(0, 0, 0, 30)
 scrollFrame.BackgroundTransparency = 1; scrollFrame.ScrollBarThickness = 4
-scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 680) 
+scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 750) 
 
 local function createButton(name, hotkeyText, yPos)
     local btn = Instance.new("TextButton", scrollFrame)
@@ -190,10 +183,7 @@ local function createSlider(name, minVal, maxVal, currentVal, yPos, callback)
 end
 _G.MySliderCleaner = function() for _, conn in ipairs(sliderConnections) do conn:Disconnect() end end
 
-local btnZ = createButton("隊友保護", "Z", 10)
-btnZ.BackgroundColor3 = Color3.fromRGB(80, 80, 80); btnZ.Text = "Z : 標記準心目標"
-
-
+-- 重新排列，間距統一 40
 local btnZ = createButton("隊友保護", "Z", 10); btnZ.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
 local btnX = createButton("幽靈穿牆", "X", 50)
 local btnC = createButton("無重力飛天", "C", 90)
@@ -204,15 +194,13 @@ local btnB = createButton("血滴子死亡光環", "B", 250)
 local btnF = createButton("平滑軌跡自瞄", "F", 290) 
 local btnT = createButton("死神自動扳機", "T", 330) 
 local btnY = createButton("夜視除霧系統", "Y", 370)
-local btnU = createButton("瞬時暴力轉向", "U", 410) -- Flickbot
-local btnK = createButton("敵首視角定位", "K", 450) -- CamLock
+local btnU = createButton("瞬時暴力轉向", "U", 410) 
+local btnK = createButton("敵首視角定位", "K", 450) 
 
-
+-- 拉條從 510 開始
 createSlider("FOVX 視覺範圍", 50, 500, AIMBOT_FOV, 510, function(val) AIMBOT_FOV = val; FOVCircle.Radius = val end)
 createSlider("AI 平滑擬真度", 1, 20, AIM_SMOOTHNESS, 560, function(val) AIM_SMOOTHNESS = val end) 
 createSlider("扳機連發延遲", 10, 200, TRIGGER_DELAY * 1000, 610, function(val) TRIGGER_DELAY = val / 1000 end) 
-
-scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 750)
 
 local function updateUI()
     local cOn = Color3.fromRGB(50, 180, 50); local cOff = Color3.fromRGB(180, 50, 50)
@@ -227,82 +215,37 @@ local function updateUI()
     btnF.BackgroundColor3 = isAimbotActive and cOn or cOff; btnF.Text = "F : 平滑自瞄 " .. (isAimbotActive and "[開]" or "[關]")
     btnT.BackgroundColor3 = isTriggerBotActive and cTrigger or cOff; btnT.Text = "T : 自動扳機 " .. (isTriggerBotActive and "[警戒]" or "[關]")
     btnY.BackgroundColor3 = isFullBrightActive and cOn or cOff; btnY.Text = "Y : 夜視除霧 " .. (isFullBrightActive and "[開]" or "[關]")
+    btnU.BackgroundColor3 = isFlickAimActive and cAttack or cOff; btnU.Text = "U : 暴力轉向 " .. (isFlickAimActive and "[開]" or "[關]")
+    btnK.BackgroundColor3 = isCamLockActive and cAttack or cOff; btnK.Text = "K : 視角定位 " .. (isCamLockActive and "[開]" or "[關]")
 end
 
-
-local function toggleFlingAura()
-    isFlingAuraActive = not isFlingAuraActive
-    local char = LocalPlayer.Character
-    if not char then return end
-
-    if isFlingAuraActive then
-        flingLimbs = {}
-        
-        for _, part in ipairs(char:GetChildren()) do
-            if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" and part.Name ~= "Head" and part.Name ~= "Torso" then
-                
-                
-                for _, joint in ipairs(part:GetDescendants()) do
-                    if joint:IsA("Motor6D") or joint:IsA("Weld") then
-                        joint.Part0 = nil 
-                    end
-                end
-                
-                part.CanCollide = true 
-                part.Velocity = Vector3.new(0, 0, 0)
-                table.insert(flingLimbs, part)
-            end
-        end
-    else
-        
-        for _, part in ipairs(char:GetChildren()) do
-            for _, joint in ipairs(part:GetDescendants()) do
-                if joint:IsA("Motor6D") then
-                    
+-- ==========================================
+-- 🎯 5. 核心防護、自瞄與物理運算
+-- ==========================================
+local function toggleIgnoreTarget()
+    local centerPos = Camera.ViewportSize / 2; local closestChar, shortestDist = nil, AIMBOT_FOV
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p ~= LocalPlayer and p.Character then
+            local head = p.Character:FindFirstChild("Head")
+            if head then
+                local pos, onScreen = Camera:WorldToViewportPoint(head.Position)
+                if onScreen then
+                    local dist = (Vector2.new(pos.X, pos.Y) - centerPos).Magnitude
+                    if dist < shortestDist then shortestDist = dist; closestChar = p.Character end
                 end
             end
         end
-        flingLimbs = {}
+    end
+    if closestChar then
+        local p = Players:GetPlayerFromCharacter(closestChar)
+        if p then 
+            ignoredPlayers[p.UserId] = not ignoredPlayers[p.UserId] 
+            if ignoredPlayers[p.UserId] then btnZ.Text = "保護中: " .. p.Name; btnZ.BackgroundColor3 = Color3.fromRGB(50, 180, 50) 
+            else btnZ.Text = "已移除: " .. p.Name; btnZ.BackgroundColor3 = Color3.fromRGB(180, 50, 50) end
+            task.delay(1.5, function() btnZ.Text = "Z : 標記準心目標"; btnZ.BackgroundColor3 = Color3.fromRGB(80, 80, 80) end)
+        end
     end
 end
-
-
-
-btnX.MouseButton1Click:Connect(function() toggleNoclip(); updateUI() end)
-btnC.MouseButton1Click:Connect(function() isFlying = not isFlying; updatePhysicsState(); updateUI() end)
-btnV.MouseButton1Click:Connect(function() isMagnetActive = not isMagnetActive; updatePhysicsState(); updateUI() end)
-btnG.MouseButton1Click:Connect(function() isHitAndRunActive = not isHitAndRunActive; updatePhysicsState(); updateUI() end)
-btnM.MouseButton1Click:Connect(function() isAttacking = not isAttacking; updatePhysicsState(); updateUI() end) 
-btnB.MouseButton1Click:Connect(function() toggleFlingAura(); updateUI() end)
-btnF.MouseButton1Click:Connect(function() isAimbotActive = not isAimbotActive; updateUI() end)
-btnT.MouseButton1Click:Connect(function() isTriggerBotActive = not isTriggerBotActive; updateUI() end)
-btnY.MouseButton1Click:Connect(function() isFullBrightActive = not isFullBrightActive; updateUI() end)
-btnZ.MouseButton1Click:Connect(toggleIgnoreTarget)
-
-_G.MyUIToggle = UserInputService.InputBegan:Connect(function(input, gp)
-    if not gp and input.KeyCode == Enum.KeyCode.Insert then mainFrame.Visible = not mainFrame.Visible end
-end)
-
-_G.MyActionBtns = UserInputService.InputBegan:Connect(function(input, gp)
-    if gp then return end
-    local key = input.KeyCode
-    
-    if key == Enum.KeyCode.Z then toggleIgnoreTarget()
-    elseif key == Enum.KeyCode.X then toggleNoclip()
-    elseif key == Enum.KeyCode.C then isFlying = not isFlying; updatePhysicsState()
-    elseif key == Enum.KeyCode.V then isMagnetActive = not isMagnetActive; updatePhysicsState()
-    elseif key == Enum.KeyCode.G then isHitAndRunActive = not isHitAndRunActive; updatePhysicsState()
-    elseif key == Enum.KeyCode.M then isAttacking = not isAttacking; updatePhysicsState() 
-    elseif key == Enum.KeyCode.B then toggleFlingAura()
-    elseif key == Enum.KeyCode.F then isAimbotActive = not isAimbotActive
-    elseif key == Enum.KeyCode.T then isTriggerBotActive = not isTriggerBotActive
-    elseif key == Enum.KeyCode.Y then isFullBrightActive = not isFullBrightActive -- 新增的夜視快捷鍵
-    end
-    
-    
-    updateUI()
-end)
-
 
 local function isValidTarget(char, requireOnScreen)
     if not char then return false end
@@ -348,19 +291,9 @@ local function getClosestEnemy()
     return closestChar
 end
 
+-- ✅ 修復渲染迴圈：整合防閃退與所有視覺修改
 _G.MyTargetCacheLoop = RunService.RenderStepped:Connect(function()
-    if FOVCircle then FOVCircle.Position = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2) end
-    if isAimbotActive then
-        if not isValidTarget(silentAimTarget, true) then silentAimTarget = getClosestToCenter() end
-    else silentAimTarget = nil end
-end)
-
-_G.MyTargetCacheLoop = RunService.RenderStepped:Connect(function()
-    if isCamLockActive and silentAimTarget and silentAimTarget:FindFirstChild("Head") then
-        local enemyHead = silentAimTarget.Head
-        Camera.CFrame = CFrame.new(enemyHead.Position + Vector3.new(0, 2, 0), enemyHead.Position + enemyHead.CFrame.LookVector * 5)
-    end
-end)
+    -- 1. 夜視除霧
     if isFullBrightActive then
         Lighting.ClockTime = 12 
         Lighting.FogEnd = 100000 
@@ -368,20 +301,31 @@ end)
         Lighting.Ambient = Color3.fromRGB(255, 255, 255) 
         Lighting.OutdoorAmbient = Color3.fromRGB(255, 255, 255) 
     end
+
+    -- 2. ESP 準心
     if FOVCircle then FOVCircle.Position = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2) end
-    if isAimbotActive then
+
+    -- 3. 獲取自瞄目標
+    if isAimbotActive or isFlickAimActive or isCamLockActive then
         if not isValidTarget(silentAimTarget, true) then silentAimTarget = getClosestToCenter() end
-    else silentAimTarget = nil end
+    else 
+        silentAimTarget = nil 
+    end
+
+    -- 4. 視角定位 (CamLock)
+    if isCamLockActive and silentAimTarget and silentAimTarget:FindFirstChild("Head") then
+        local enemyHead = silentAimTarget.Head
+        Camera.CFrame = CFrame.new(enemyHead.Position + Vector3.new(0, 2, 0), enemyHead.Position + enemyHead.CFrame.LookVector * 5)
+    end
 end)
+
 RunService:BindToRenderStep("MyMouseAimLoop", Enum.RenderPriority.Camera.Value + 1, function()
-    
+    -- 電腦與手機通用雙棲自瞄
     if isAimbotActive and silentAimTarget and silentAimTarget:FindFirstChild("Head") then
         local headPos = silentAimTarget.Head.Position
         local targetPos, onScreen = Camera:WorldToViewportPoint(headPos)
-        
         if onScreen then
             if mousemoverel then
-                
                 local center = Camera.ViewportSize / 2
                 local moveX = (targetPos.X - center.X) / AIM_SMOOTHNESS
                 local moveY = (targetPos.Y - center.Y) / AIM_SMOOTHNESS
@@ -394,6 +338,7 @@ RunService:BindToRenderStep("MyMouseAimLoop", Enum.RenderPriority.Camera.Value +
             end
         end
     end
+
     if isTriggerBotActive then
         local target = Mouse.Target
         if target and target.Parent then
@@ -415,11 +360,15 @@ _G.MyPhysicsLoop = RunService.Stepped:Connect(function()
     local char = LocalPlayer.Character
     local hrp = char and char:FindFirstChild("HumanoidRootPart")
     if not hrp or char.Humanoid.Health <= 0 then return end
+
+    -- 🎯 暴力轉向 (Flickbot)
     if isFlickAimActive and silentAimTarget and silentAimTarget:FindFirstChild("Head") then
         local targetHead = silentAimTarget.Head.Position
         local lookPos = Vector3.new(targetHead.X, hrp.Position.Y, targetHead.Z)
         hrp.CFrame = CFrame.lookAt(hrp.Position, lookPos)
     end
+
+    -- 🩸 血滴子
     if isFlingAuraActive and #flingLimbs > 0 then
         local t = os.clock() * AURA_SPEED
         for i, limb in ipairs(flingLimbs) do
@@ -432,10 +381,14 @@ _G.MyPhysicsLoop = RunService.Stepped:Connect(function()
         hrp.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
         hrp.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
     end
+
     if isNoclip then for _, part in ipairs(char:GetDescendants()) do if part:IsA("BasePart") then part.CanCollide = false end end end
-    if not isFlying and not isMagnetActive and not isHitAndRunActive and not isAttacking then
+    
+    -- ✅ 隱蔽性修復：只在需要對抗物理時鎖定角速度
+    if isFlying or isMagnetActive or isHitAndRunActive or isAttacking or isFlingAuraActive then
         for _, part in ipairs(char:GetDescendants()) do if part:IsA("BasePart") then part.AssemblyAngularVelocity = Vector3.new(0,0,0) end end
     end
+
     if isHitAndRunActive or isAttacking then
         if not hasSavedCFrame then safeCFrame = hrp.CFrame; hasSavedCFrame = true end
         if isAttacking then
@@ -453,6 +406,7 @@ _G.MyPhysicsLoop = RunService.Stepped:Connect(function()
     else
         if hasSavedCFrame then if safeCFrame then hrp.CFrame = safeCFrame end; hasSavedCFrame = false end
     end
+
     if isMagnetActive then
         local targetEnemy = getClosestEnemy() 
         if targetEnemy and targetEnemy:FindFirstChild("HumanoidRootPart") and targetEnemy.Humanoid.Health > 0 then
@@ -467,6 +421,7 @@ _G.MyPhysicsLoop = RunService.Stepped:Connect(function()
         isMagnetActive = false; hrp.AssemblyLinearVelocity = Vector3.new(0, 0, 0) 
         task.defer(function() updatePhysicsState(); updateUI() end) 
     end
+
     if isFlying then
         local moveDir = Vector3.new(0, 0, 0)
         if UserInputService:IsKeyDown(Enum.KeyCode.W) then moveDir = moveDir + Camera.CFrame.LookVector end
@@ -475,7 +430,7 @@ _G.MyPhysicsLoop = RunService.Stepped:Connect(function()
         if UserInputService:IsKeyDown(Enum.KeyCode.D) then moveDir = moveDir + Camera.CFrame.RightVector end
         if UserInputService:IsKeyDown(Enum.KeyCode.Space) then moveDir = moveDir + Vector3.new(0, 1, 0) end
         if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) then moveDir = moveDir - Vector3.new(0, 1, 0) end
-        local thumbstickDir = hum.MoveDirection
+        local thumbstickDir = char.Humanoid.MoveDirection
         if thumbstickDir.Magnitude > 0 then moveDir = moveDir + thumbstickDir end
         hrp.AssemblyLinearVelocity = moveDir.Magnitude > 0 and (moveDir.Unit * FLY_SPEED) or Vector3.new(0, 0, 0) 
     end
@@ -500,6 +455,45 @@ _G.MyESPLoop = RunService.Heartbeat:Connect(function()
             end
         end
     end)
+end)
+
+-- ==========================================
+-- ⌨️ 6. 事件綁定區 (UI & 快捷鍵)
+-- ==========================================
+btnZ.MouseButton1Click:Connect(toggleIgnoreTarget)
+btnX.MouseButton1Click:Connect(function() toggleNoclip(); updateUI() end)
+btnC.MouseButton1Click:Connect(function() isFlying = not isFlying; updatePhysicsState(); updateUI() end)
+btnV.MouseButton1Click:Connect(function() isMagnetActive = not isMagnetActive; updatePhysicsState(); updateUI() end)
+btnG.MouseButton1Click:Connect(function() isHitAndRunActive = not isHitAndRunActive; updatePhysicsState(); updateUI() end)
+btnM.MouseButton1Click:Connect(function() isAttacking = not isAttacking; updatePhysicsState(); updateUI() end) 
+btnB.MouseButton1Click:Connect(function() toggleFlingAura(); updateUI() end)
+btnF.MouseButton1Click:Connect(function() isAimbotActive = not isAimbotActive; updateUI() end)
+btnT.MouseButton1Click:Connect(function() isTriggerBotActive = not isTriggerBotActive; updateUI() end)
+btnY.MouseButton1Click:Connect(function() isFullBrightActive = not isFullBrightActive; updateUI() end)
+btnU.MouseButton1Click:Connect(function() toggleFlickAim(); updateUI() end)
+btnK.MouseButton1Click:Connect(function() toggleCamLock(); updateUI() end)
+
+_G.MyUIToggle = UserInputService.InputBegan:Connect(function(input, gp)
+    if not gp and input.KeyCode == Enum.KeyCode.Insert then mainFrame.Visible = not mainFrame.Visible end
+end)
+
+_G.MyActionBtns = UserInputService.InputBegan:Connect(function(input, gp)
+    if gp then return end
+    local key = input.KeyCode
+    if key == Enum.KeyCode.Z then toggleIgnoreTarget()
+    elseif key == Enum.KeyCode.X then toggleNoclip()
+    elseif key == Enum.KeyCode.C then isFlying = not isFlying; updatePhysicsState()
+    elseif key == Enum.KeyCode.V then isMagnetActive = not isMagnetActive; updatePhysicsState()
+    elseif key == Enum.KeyCode.G then isHitAndRunActive = not isHitAndRunActive; updatePhysicsState()
+    elseif key == Enum.KeyCode.M then isAttacking = not isAttacking; updatePhysicsState() 
+    elseif key == Enum.KeyCode.B then toggleFlingAura()
+    elseif key == Enum.KeyCode.F then isAimbotActive = not isAimbotActive
+    elseif key == Enum.KeyCode.T then isTriggerBotActive = not isTriggerBotActive
+    elseif key == Enum.KeyCode.Y then isFullBrightActive = not isFullBrightActive
+    elseif key == Enum.KeyCode.U then toggleFlickAim()
+    elseif key == Enum.KeyCode.K then toggleCamLock()
+    end
+    updateUI()
 end)
 
 updateUI()
