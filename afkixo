@@ -1,4 +1,6 @@
-
+-- ==========================================================
+-- 🌌 星輝商業發行版 (地圖透視 X-Ray + 手機終極壓制版)
+-- ==========================================================
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -10,10 +12,8 @@ local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 local Mouse = LocalPlayer:GetMouse()
 
-
 local OWNER_ID = 4156480207 
 local OWNER_NAME = "blusshop_trade"
-
 local myName = LocalPlayer.Name
 local myID = LocalPlayer.UserId
 local isOwner = (myName == OWNER_NAME or myID == OWNER_ID)
@@ -26,20 +26,17 @@ if not isOwner then
         task.wait(0.5) 
     end
 end
-
 if not isOwner and not isFriend then
     LocalPlayer:Kick("\n【星輝系統】驗證失敗！\n1. 請確認已加作者 ("..OWNER_NAME..") 為好友。\n您的帳號: " .. myName)
     return 
 end
 
-print("驗證通過！最高主宰: " .. myName)
-
+print("✅ 驗證通過！最高主宰: " .. myName)
 
 local function cleanConn(name) if _G[name] then pcall(function() _G[name]:Disconnect() end); _G[name] = nil end end
 cleanConn("MyESPLoop"); cleanConn("MyActionBtns"); cleanConn("MyPhysicsLoop")
 cleanConn("MyTargetCacheLoop"); cleanConn("MyUIToggle"); cleanConn("MySliderCleaner") 
 pcall(function() RunService:UnbindFromRenderStep("MyMouseAimLoop") end)
-
 if _G.FOVCircle then _G.FOVCircle:Remove(); _G.FOVCircle = nil end
 if _G.MyChamsFolder then pcall(function() _G.MyChamsFolder:Destroy() end); _G.MyChamsFolder = nil end
 if _G.MyUI then pcall(function() _G.MyUI:Destroy() end); _G.MyUI = nil end
@@ -52,7 +49,7 @@ if type(Drawing) == "table" and Drawing.new then
         FOVCircle.Filled = false; FOVCircle.Transparency = 0.8; _G.FOVCircle = FOVCircle
     end)
 else
-    print("當前執行器不支援 Drawing API，已自動關閉 FOV 視覺光圈，但不影響自瞄功能。")
+    print("⚠️ 警告：當前執行器不支援 Drawing API，已自動關閉 FOV 視覺光圈，但不影響自瞄功能。")
 end
 
 local voidPlatforms = {}
@@ -64,29 +61,29 @@ for i, pos in ipairs(platformOffsets) do
     voidPlatforms[i] = pos
 end
 
-
 local isNoclip, isFlying, isMagnetActive, isHitAndRunActive, isAttacking = false, false, false, false, false
 local isAimbotActive, isTriggerBotActive, isFlingAuraActive = false, false, false
 local isFullBrightActive, isFlickAimActive = false, false
-local camState = 0 -- 0:正常, 1:第三人稱, 2:敵首定位
+local camState = 0 
 local flingLimbs = {}
 local AURA_RADIUS, AURA_SPEED = 12, 15 
 local FLY_SPEED, AIMBOT_FOV, MAX_ATTACK_RANGE, AIM_SMOOTHNESS, TRIGGER_DELAY, BEHIND_OFFSET = 300, 150, 440, 8, 0.05, 4
 local ignoredPlayers, silentAimTarget, safeCFrame, hasSavedCFrame, lastClickTime = {}, nil, nil, false, 0
 
+-- ✅ 新增：地圖透視 (X-Ray) 變數
+local isXrayActive = false
+local originalTransparencies = {}
+
 local function toggleFlingAura()
     isFlingAuraActive = not isFlingAuraActive
     local char = LocalPlayer.Character
     if not char then return end
-
     if isFlingAuraActive then
         flingLimbs = {}
         for _, part in ipairs(char:GetChildren()) do
             if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" and part.Name ~= "Head" and part.Name ~= "Torso" and part.Name ~= "UpperTorso" then
                 for _, joint in ipairs(part:GetDescendants()) do
-                    if joint:IsA("Motor6D") or joint:IsA("Weld") then
-                        joint.Part0 = nil 
-                    end
+                    if joint:IsA("Motor6D") or joint:IsA("Weld") then joint.Part0 = nil end
                 end
                 part.CanCollide = true
                 table.insert(flingLimbs, part)
@@ -96,27 +93,47 @@ local function toggleFlingAura()
         flingLimbs = {}
     end
 end
+
 local function toggleFlickAim() isFlickAimActive = not isFlickAimActive end
 
 local origCamSettings = {} 
 local function toggleCamState()
     local oldState = camState
     camState = (camState + 1) % 3
-    
     if oldState == 0 and camState ~= 0 then
-        
         origCamSettings.Type = Camera.CameraType
         origCamSettings.Subject = Camera.CameraSubject
         origCamSettings.Mode = LocalPlayer.CameraMode
         origCamSettings.MinZ = LocalPlayer.CameraMinZoomDistance
         origCamSettings.MaxZ = LocalPlayer.CameraMaxZoomDistance
     elseif camState == 0 then
-       
         Camera.CameraType = origCamSettings.Type or Enum.CameraType.Custom
         if origCamSettings.Subject then Camera.CameraSubject = origCamSettings.Subject end
         LocalPlayer.CameraMode = origCamSettings.Mode or Enum.CameraMode.Classic
         LocalPlayer.CameraMinZoomDistance = origCamSettings.MinZ or 0.5
         LocalPlayer.CameraMaxZoomDistance = origCamSettings.MaxZ or 128
+    end
+end
+
+-- ✅ 新增：地圖透視 (X-Ray) 切換引擎
+local function toggleXray()
+    isXrayActive = not isXrayActive
+    if isXrayActive then
+        for _, obj in ipairs(workspace:GetDescendants()) do
+            if obj:IsA("BasePart") and not obj.Parent:FindFirstChild("Humanoid") and obj.Name ~= "HumanoidRootPart" then
+                if originalTransparencies[obj] == nil then
+                    originalTransparencies[obj] = obj.Transparency
+                end
+                obj.Transparency = 0.5 -- 半透明化
+            end
+        end
+    else
+        for obj, trans in pairs(originalTransparencies) do
+            if obj and obj.Parent then
+                obj.Transparency = trans
+            end
+        end
+        originalTransparencies = {}
     end
 end
 
@@ -126,7 +143,7 @@ local function updatePhysicsState()
         if isFlying or isMagnetActive or isHitAndRunActive or isAttacking or isFlingAuraActive then 
             hum:ChangeState(Enum.HumanoidStateType.Physics)
         else 
-            hum:ChangeState(Enum.HumanoidStateType.GettingUp) -- 隱蔽性防卡死
+            hum:ChangeState(Enum.HumanoidStateType.GettingUp) 
         end
     end
 end
@@ -166,7 +183,7 @@ mobileToggleBtn.MouseButton1Click:Connect(function() mainFrame.Visible = not mai
 local scrollFrame = Instance.new("ScrollingFrame", mainFrame)
 scrollFrame.Size = UDim2.new(1, 0, 1, -30); scrollFrame.Position = UDim2.new(0, 0, 0, 30)
 scrollFrame.BackgroundTransparency = 1; scrollFrame.ScrollBarThickness = 4
-scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 750) 
+scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 820) 
 
 local function createButton(name, hotkeyText, yPos)
     local btn = Instance.new("TextButton", scrollFrame)
@@ -212,10 +229,11 @@ local btnT = createButton("死神自動扳機", "T", 330)
 local btnY = createButton("夜視除霧系統", "Y", 370)
 local btnU = createButton("瞬時暴力轉向", "U", 410) 
 local btnK = createButton("視角切換系統", "K", 450) 
+local btnP = createButton("地圖物件透視", "P", 490) -- ✅ 新增透視按鈕
 
-createSlider("FOVX 視覺範圍", 50, 500, AIMBOT_FOV, 510, function(val) AIMBOT_FOV = val; FOVCircle.Radius = val end)
-createSlider("AI 平滑擬真度", 1, 20, AIM_SMOOTHNESS, 560, function(val) AIM_SMOOTHNESS = val end) 
-createSlider("扳機連發延遲", 10, 200, TRIGGER_DELAY * 1000, 610, function(val) TRIGGER_DELAY = val / 1000 end) 
+createSlider("FOVX 視覺範圍", 50, 500, AIMBOT_FOV, 530, function(val) AIMBOT_FOV = val; if FOVCircle then FOVCircle.Radius = val end end)
+createSlider("AI 平滑擬真度", 1, 20, AIM_SMOOTHNESS, 580, function(val) AIM_SMOOTHNESS = val end) 
+createSlider("扳機連發延遲", 10, 200, TRIGGER_DELAY * 1000, 630, function(val) TRIGGER_DELAY = val / 1000 end) 
 
 local function updateUI()
     local cOn = Color3.fromRGB(50, 180, 50); local cOff = Color3.fromRGB(180, 50, 50)
@@ -231,6 +249,7 @@ local function updateUI()
     btnT.BackgroundColor3 = isTriggerBotActive and cTrigger or cOff; btnT.Text = "T : 自動扳機 " .. (isTriggerBotActive and "[警戒]" or "[關]")
     btnY.BackgroundColor3 = isFullBrightActive and cOn or cOff; btnY.Text = "Y : 夜視除霧 " .. (isFullBrightActive and "[開]" or "[關]")
     btnU.BackgroundColor3 = isFlickAimActive and cAttack or cOff; btnU.Text = "U : 暴力轉向 " .. (isFlickAimActive and "[開]" or "[關]")
+    btnP.BackgroundColor3 = isXrayActive and cOn or cOff; btnP.Text = "P : 地圖物件透視 " .. (isXrayActive and "[開]" or "[關]")
     
     if camState == 0 then
         btnK.BackgroundColor3 = cOff; btnK.Text = "K : 視角切換 [正常]"
@@ -310,7 +329,6 @@ local function getClosestEnemy()
     return closestChar
 end
 
-
 _G.MyTargetCacheLoop = RunService.RenderStepped:Connect(function()
     if isFullBrightActive then
         Lighting.ClockTime = 12 
@@ -328,7 +346,6 @@ _G.MyTargetCacheLoop = RunService.RenderStepped:Connect(function()
         silentAimTarget = nil 
     end
 
-    -- 🎥 三段式視角控制
     if camState == 1 then
         local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
         if hrp then
@@ -348,10 +365,10 @@ _G.MyTargetCacheLoop = RunService.RenderStepped:Connect(function()
             end
         end
     end
-    
 end)
 
-RunService:BindToRenderStep("MyMouseAimLoop", Enum.RenderPriority.Camera.Value + 1, function()
+-- ✅ 更新：強制壓制手機觸控系統的最高優先級自瞄
+RunService:BindToRenderStep("MyMouseAimLoop", Enum.RenderPriority.Last.Value, function()
     if isAimbotActive and silentAimTarget and silentAimTarget:FindFirstChild("Head") then
         local headPos = silentAimTarget.Head.Position
         local targetPos, onScreen = Camera:WorldToViewportPoint(headPos)
@@ -363,9 +380,10 @@ RunService:BindToRenderStep("MyMouseAimLoop", Enum.RenderPriority.Camera.Value +
                 moveX = moveX + math.random(-1, 1) * 0.2; moveY = moveY + math.random(-1, 1) * 0.2
                 pcall(function() mousemoverel(moveX, moveY) end)
             else
+                -- 手機強效 Lerp (抵抗螢幕滑動摩擦力)
                 local currentCFrame = Camera.CFrame
                 local targetCFrame = CFrame.lookAt(currentCFrame.Position, headPos)
-                Camera.CFrame = currentCFrame:Lerp(targetCFrame, 0.5 / AIM_SMOOTHNESS)
+                Camera.CFrame = currentCFrame:Lerp(targetCFrame, 1 / (AIM_SMOOTHNESS * 0.5))
             end
         end
     end
@@ -464,27 +482,48 @@ _G.MyPhysicsLoop = RunService.Stepped:Connect(function()
     end
 end)
 
-local chamsFolder = Instance.new("Folder", workspace); chamsFolder.Name = "MyESPChams"; _G.MyChamsFolder = chamsFolder
+-- ✅ 更新：無敵版手機 3D 幾何透視 ESP (無視畫質設定)
+local chamsFolder = Instance.new("Folder", workspace)
+chamsFolder.Name = "MyMobileESP"
+_G.MyChamsFolder = chamsFolder
+
 _G.MyESPLoop = RunService.Heartbeat:Connect(function()
     pcall(function()
         for _, p in ipairs(Players:GetPlayers()) do
             if p == LocalPlayer then continue end
             local char = p.Character
+            
             if ignoredPlayers[p.UserId] or not char or not char:FindFirstChild("Humanoid") or char.Humanoid.Health <= 0 then
-                if chamsFolder:FindFirstChild(p.Name) then chamsFolder[p.Name]:Destroy() end; continue
+                if chamsFolder:FindFirstChild(p.Name) then chamsFolder[p.Name]:Destroy() end
+                continue
             end
-            if char:FindFirstChild("Head") and char:FindFirstChild("Humanoid") then
-                local highlight = chamsFolder:FindFirstChild(p.Name)
-                if not highlight then
-                    highlight = Instance.new("Highlight", chamsFolder); highlight.Name = p.Name; highlight.Adornee = char
-                    highlight.FillColor = Color3.fromRGB(255, 0, 0); highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
-                    highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-                else highlight.Adornee = char end
+            
+            local espNode = chamsFolder:FindFirstChild(p.Name)
+            if not espNode then
+                espNode = Instance.new("Folder", chamsFolder)
+                espNode.Name = p.Name
+                for _, part in ipairs(char:GetChildren()) do
+                    if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
+                        local box = Instance.new("BoxHandleAdornment", espNode)
+                        box.Adornee = part
+                        box.AlwaysOnTop = true
+                        box.ZIndex = 10
+                        box.Size = part.Size + Vector3.new(0.05, 0.05, 0.05)
+                        box.Transparency = 0.5
+                        box.Color3 = Color3.fromRGB(255, 0, 0)
+                    end
+                end
+            else
+                for _, box in ipairs(espNode:GetChildren()) do
+                    if box:IsA("BoxHandleAdornment") and (not box.Adornee or not box.Adornee.Parent) then
+                        espNode:Destroy()
+                        break
+                    end
+                end
             end
         end
     end)
 end)
-
 
 btnZ.MouseButton1Click:Connect(toggleIgnoreTarget)
 btnX.MouseButton1Click:Connect(function() toggleNoclip(); updateUI() end)
@@ -498,6 +537,7 @@ btnT.MouseButton1Click:Connect(function() isTriggerBotActive = not isTriggerBotA
 btnY.MouseButton1Click:Connect(function() isFullBrightActive = not isFullBrightActive; updateUI() end)
 btnU.MouseButton1Click:Connect(function() toggleFlickAim(); updateUI() end)
 btnK.MouseButton1Click:Connect(function() toggleCamState(); updateUI() end)
+btnP.MouseButton1Click:Connect(function() toggleXray(); updateUI() end)
 
 _G.MyUIToggle = UserInputService.InputBegan:Connect(function(input, gp)
     if not gp and input.KeyCode == Enum.KeyCode.Insert then mainFrame.Visible = not mainFrame.Visible end
@@ -518,6 +558,7 @@ _G.MyActionBtns = UserInputService.InputBegan:Connect(function(input, gp)
     elseif key == Enum.KeyCode.Y then isFullBrightActive = not isFullBrightActive
     elseif key == Enum.KeyCode.U then toggleFlickAim()
     elseif key == Enum.KeyCode.K then toggleCamState()
+    elseif key == Enum.KeyCode.P then toggleXray()
     end
     updateUI()
 end)
