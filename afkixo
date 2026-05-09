@@ -1,6 +1,3 @@
--- ==========================================================
--- 🌌 星輝商業發行版 (終極完美版 - 修復重複貼上與視角卡死)
--- ==========================================================
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -11,18 +8,12 @@ local Lighting = game:GetService("Lighting")
 local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 local Mouse = LocalPlayer:GetMouse()
-
--- ==========================================
--- 🔐 1. 終極防呆驗證系統 (雙重保險)
--- ==========================================
 local OWNER_ID = 4156480207 
 local OWNER_NAME = "blusshop_trade"
-
 local myName = LocalPlayer.Name
 local myID = LocalPlayer.UserId
 local isOwner = (myName == OWNER_NAME or myID == OWNER_ID)
 local isFriend = false
-
 if not isOwner then
     for i = 1, 3 do
         local success, result = pcall(function() return LocalPlayer:IsFriendsWith(OWNER_ID) end)
@@ -30,30 +21,23 @@ if not isOwner then
         task.wait(0.5) 
     end
 end
-
 if not isOwner and not isFriend then
     LocalPlayer:Kick("\n【星輝系統】驗證失敗！\n1. 請確認已加作者 ("..OWNER_NAME..") 為好友。\n您的帳號: " .. myName)
     return 
 end
 
-print("✅ 驗證通過！最高主宰: " .. myName)
+print("驗證通過！最高主宰: " .. myName)
 
--- ==========================================
--- 🧹 2. 系統清理與初始化
--- ==========================================
 local function cleanConn(name) if _G[name] then pcall(function() _G[name]:Disconnect() end); _G[name] = nil end end
 cleanConn("MyESPLoop"); cleanConn("MyActionBtns"); cleanConn("MyPhysicsLoop")
 cleanConn("MyTargetCacheLoop"); cleanConn("MyUIToggle"); cleanConn("MySliderCleaner") 
 pcall(function() RunService:UnbindFromRenderStep("MyMouseAimLoop") end)
-
 if _G.FOVCircle then _G.FOVCircle:Remove(); _G.FOVCircle = nil end
 if _G.MyChamsFolder then pcall(function() _G.MyChamsFolder:Destroy() end); _G.MyChamsFolder = nil end
 if _G.MyUI then pcall(function() _G.MyUI:Destroy() end); _G.MyUI = nil end
-
 local FOVCircle = Drawing.new("Circle")
 FOVCircle.Visible = true; FOVCircle.Thickness = 1.5; FOVCircle.Color = Color3.fromRGB(0, 255, 255)
 FOVCircle.Filled = false; FOVCircle.Transparency = 0.8; _G.FOVCircle = FOVCircle
-
 local voidPlatforms = {}
 local platformOffsets = { Vector3.new(0, 50000, 0), Vector3.new(2000, 50000, 0), Vector3.new(0, 50000, 2000), Vector3.new(2000, 50000, 2000) }
 for i, pos in ipairs(platformOffsets) do
@@ -63,9 +47,6 @@ for i, pos in ipairs(platformOffsets) do
     voidPlatforms[i] = pos
 end
 
--- ==========================================
--- ⚙️ 3. 變數與核心邏輯
--- ==========================================
 local isNoclip, isFlying, isMagnetActive, isHitAndRunActive, isAttacking = false, false, false, false, false
 local isAimbotActive, isTriggerBotActive, isFlingAuraActive = false, false, false
 local isFullBrightActive, isFlickAimActive, isCamLockActive = false, false, false
@@ -106,7 +87,7 @@ local function updatePhysicsState()
         if isFlying or isMagnetActive or isHitAndRunActive or isAttacking or isFlingAuraActive then 
             hum:ChangeState(Enum.HumanoidStateType.Physics)
         else 
-            -- ✅ 防止卡死與滑行殭屍的正確設定
+            
             hum:ChangeState(Enum.HumanoidStateType.GettingUp) 
         end
     end
@@ -126,9 +107,6 @@ _G.MyCharRespawn = LocalPlayer.CharacterAdded:Connect(function()
     flingLimbs = {}; silentAimTarget = nil
 end)
 
--- ==========================================
--- 📱 4. UI 介面 (包含可拖曳修復)
--- ==========================================
 local screenGui = Instance.new("ScreenGui"); screenGui.Name = "MyControlPanel"; screenGui.ResetOnSpawn = false
 pcall(function() screenGui.Parent = game:GetService("CoreGui") end)
 if not screenGui.Parent then screenGui.Parent = LocalPlayer:WaitForChild("PlayerGui") end
@@ -143,8 +121,7 @@ mobileToggleBtn.Font = Enum.Font.GothamBold; mobileToggleBtn.TextSize = 12; mobi
 local mainFrame = Instance.new("Frame", screenGui)
 mainFrame.Size = UDim2.new(0, 240, 0.6, 0); mainFrame.Position = UDim2.new(0.5, 0, 0.2, 0)
 mainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20); mainFrame.BorderSizePixel = 1; mainFrame.BorderColor3 = Color3.fromRGB(0, 255, 255)
-mainFrame.Active = true; mainFrame.Draggable = true -- ✅ 視窗可拖曳修復
-
+mainFrame.Active = true; mainFrame.Draggable = true 
 mobileToggleBtn.MouseButton1Click:Connect(function() mainFrame.Visible = not mainFrame.Visible end)
 
 local scrollFrame = Instance.new("ScrollingFrame", mainFrame)
@@ -218,9 +195,7 @@ local function updateUI()
     btnK.BackgroundColor3 = isCamLockActive and cAttack or cOff; btnK.Text = "K : 視角定位 " .. (isCamLockActive and "[開]" or "[關]")
 end
 
--- ==========================================
--- 🎯 5. 核心防護與目標抓取
--- ==========================================
+
 local function toggleIgnoreTarget()
     local centerPos = Camera.ViewportSize / 2; local closestChar, shortestDist = nil, AIMBOT_FOV
     for _, p in ipairs(Players:GetPlayers()) do
@@ -290,9 +265,7 @@ local function getClosestEnemy()
     return closestChar
 end
 
--- ==========================================
--- 🔮 6. 渲染引擎 (包含遺失的自瞄引擎)
--- ==========================================
+
 _G.MyTargetCacheLoop = RunService.RenderStepped:Connect(function()
     if isFullBrightActive then
         Lighting.ClockTime = 12 
@@ -310,7 +283,7 @@ _G.MyTargetCacheLoop = RunService.RenderStepped:Connect(function()
         silentAimTarget = nil 
     end
 
-    -- ✅ K鍵防卡死機制
+    
     if isCamLockActive and silentAimTarget and silentAimTarget:FindFirstChild("Head") then
         local enemyHead = silentAimTarget.Head
         Camera.CameraType = Enum.CameraType.Scriptable
@@ -322,7 +295,6 @@ _G.MyTargetCacheLoop = RunService.RenderStepped:Connect(function()
     end
 end)
 
--- ✅ 把遺失的「自瞄與自動扳機」引擎加回來了！
 RunService:BindToRenderStep("MyMouseAimLoop", Enum.RenderPriority.Camera.Value + 1, function()
     if isAimbotActive and silentAimTarget and silentAimTarget:FindFirstChild("Head") then
         local headPos = silentAimTarget.Head.Position
@@ -359,9 +331,7 @@ RunService:BindToRenderStep("MyMouseAimLoop", Enum.RenderPriority.Camera.Value +
     end
 end)
 
--- ==========================================
--- 🛡️ 7. 物理引擎
--- ==========================================
+
 _G.MyPhysicsLoop = RunService.Stepped:Connect(function()
     local char = LocalPlayer.Character
     local hrp = char and char:FindFirstChild("HumanoidRootPart")
@@ -460,9 +430,6 @@ _G.MyESPLoop = RunService.Heartbeat:Connect(function()
     end)
 end)
 
--- ==========================================
--- ⌨️ 8. 事件綁定區
--- ==========================================
 btnZ.MouseButton1Click:Connect(toggleIgnoreTarget)
 btnX.MouseButton1Click:Connect(function() toggleNoclip(); updateUI() end)
 btnC.MouseButton1Click:Connect(function() isFlying = not isFlying; updatePhysicsState(); updateUI() end)
