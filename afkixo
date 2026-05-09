@@ -1,3 +1,6 @@
+-- ==========================================================
+-- 🌌 星輝商業發行版 (終極完美版 - 修復重複貼上與視角卡死)
+-- ==========================================================
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -9,6 +12,9 @@ local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 local Mouse = LocalPlayer:GetMouse()
 
+-- ==========================================
+-- 🔐 1. 終極防呆驗證系統 (雙重保險)
+-- ==========================================
 local OWNER_ID = 4156480207 
 local OWNER_NAME = "blusshop_trade"
 
@@ -30,8 +36,11 @@ if not isOwner and not isFriend then
     return 
 end
 
-print("驗證通過！最高主宰: " .. myName)
+print("✅ 驗證通過！最高主宰: " .. myName)
 
+-- ==========================================
+-- 🧹 2. 系統清理與初始化
+-- ==========================================
 local function cleanConn(name) if _G[name] then pcall(function() _G[name]:Disconnect() end); _G[name] = nil end end
 cleanConn("MyESPLoop"); cleanConn("MyActionBtns"); cleanConn("MyPhysicsLoop")
 cleanConn("MyTargetCacheLoop"); cleanConn("MyUIToggle"); cleanConn("MySliderCleaner") 
@@ -54,6 +63,9 @@ for i, pos in ipairs(platformOffsets) do
     voidPlatforms[i] = pos
 end
 
+-- ==========================================
+-- ⚙️ 3. 變數與核心邏輯
+-- ==========================================
 local isNoclip, isFlying, isMagnetActive, isHitAndRunActive, isAttacking = false, false, false, false, false
 local isAimbotActive, isTriggerBotActive, isFlingAuraActive = false, false, false
 local isFullBrightActive, isFlickAimActive, isCamLockActive = false, false, false
@@ -94,6 +106,7 @@ local function updatePhysicsState()
         if isFlying or isMagnetActive or isHitAndRunActive or isAttacking or isFlingAuraActive then 
             hum:ChangeState(Enum.HumanoidStateType.Physics)
         else 
+            -- ✅ 防止卡死與滑行殭屍的正確設定
             hum:ChangeState(Enum.HumanoidStateType.GettingUp) 
         end
     end
@@ -113,6 +126,9 @@ _G.MyCharRespawn = LocalPlayer.CharacterAdded:Connect(function()
     flingLimbs = {}; silentAimTarget = nil
 end)
 
+-- ==========================================
+-- 📱 4. UI 介面 (包含可拖曳修復)
+-- ==========================================
 local screenGui = Instance.new("ScreenGui"); screenGui.Name = "MyControlPanel"; screenGui.ResetOnSpawn = false
 pcall(function() screenGui.Parent = game:GetService("CoreGui") end)
 if not screenGui.Parent then screenGui.Parent = LocalPlayer:WaitForChild("PlayerGui") end
@@ -127,8 +143,7 @@ mobileToggleBtn.Font = Enum.Font.GothamBold; mobileToggleBtn.TextSize = 12; mobi
 local mainFrame = Instance.new("Frame", screenGui)
 mainFrame.Size = UDim2.new(0, 240, 0.6, 0); mainFrame.Position = UDim2.new(0.5, 0, 0.2, 0)
 mainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20); mainFrame.BorderSizePixel = 1; mainFrame.BorderColor3 = Color3.fromRGB(0, 255, 255)
-
-mainFrame.Active = true; mainFrame.Draggable = true
+mainFrame.Active = true; mainFrame.Draggable = true -- ✅ 視窗可拖曳修復
 
 mobileToggleBtn.MouseButton1Click:Connect(function() mainFrame.Visible = not mainFrame.Visible end)
 
@@ -169,7 +184,6 @@ local function createSlider(name, minVal, maxVal, currentVal, yPos, callback)
 end
 _G.MySliderCleaner = function() for _, conn in ipairs(sliderConnections) do conn:Disconnect() end end
 
--- 重新排列，間距統一 40
 local btnZ = createButton("隊友保護", "Z", 10); btnZ.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
 local btnX = createButton("幽靈穿牆", "X", 50)
 local btnC = createButton("無重力飛天", "C", 90)
@@ -183,7 +197,6 @@ local btnY = createButton("夜視除霧系統", "Y", 370)
 local btnU = createButton("瞬時暴力轉向", "U", 410) 
 local btnK = createButton("敵首視角定位", "K", 450) 
 
--- 拉條從 510 開始
 createSlider("FOVX 視覺範圍", 50, 500, AIMBOT_FOV, 510, function(val) AIMBOT_FOV = val; FOVCircle.Radius = val end)
 createSlider("AI 平滑擬真度", 1, 20, AIM_SMOOTHNESS, 560, function(val) AIM_SMOOTHNESS = val end) 
 createSlider("扳機連發延遲", 10, 200, TRIGGER_DELAY * 1000, 610, function(val) TRIGGER_DELAY = val / 1000 end) 
@@ -205,7 +218,9 @@ local function updateUI()
     btnK.BackgroundColor3 = isCamLockActive and cAttack or cOff; btnK.Text = "K : 視角定位 " .. (isCamLockActive and "[開]" or "[關]")
 end
 
-
+-- ==========================================
+-- 🎯 5. 核心防護與目標抓取
+-- ==========================================
 local function toggleIgnoreTarget()
     local centerPos = Camera.ViewportSize / 2; local closestChar, shortestDist = nil, AIMBOT_FOV
     for _, p in ipairs(Players:GetPlayers()) do
@@ -275,8 +290,10 @@ local function getClosestEnemy()
     return closestChar
 end
 
+-- ==========================================
+-- 🔮 6. 渲染引擎 (包含遺失的自瞄引擎)
+-- ==========================================
 _G.MyTargetCacheLoop = RunService.RenderStepped:Connect(function()
-    -- 1. 夜視除霧
     if isFullBrightActive then
         Lighting.ClockTime = 12 
         Lighting.FogEnd = 100000 
@@ -284,15 +301,19 @@ _G.MyTargetCacheLoop = RunService.RenderStepped:Connect(function()
         Lighting.Ambient = Color3.fromRGB(255, 255, 255) 
         Lighting.OutdoorAmbient = Color3.fromRGB(255, 255, 255) 
     end
+
     if FOVCircle then FOVCircle.Position = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2) end
+
     if isAimbotActive or isFlickAimActive or isCamLockActive then
         if not isValidTarget(silentAimTarget, true) then silentAimTarget = getClosestToCenter() end
     else 
         silentAimTarget = nil 
     end
+
+    -- ✅ K鍵防卡死機制
     if isCamLockActive and silentAimTarget and silentAimTarget:FindFirstChild("Head") then
         local enemyHead = silentAimTarget.Head
-        Camera.CameraType = Enum.CameraType.Scriptable -- 強制奪取鏡頭控制權
+        Camera.CameraType = Enum.CameraType.Scriptable
         Camera.CFrame = CFrame.new(enemyHead.Position + Vector3.new(0, 2, 0), enemyHead.Position + enemyHead.CFrame.LookVector * 5)
     else
         if Camera.CameraType == Enum.CameraType.Scriptable then
@@ -300,6 +321,47 @@ _G.MyTargetCacheLoop = RunService.RenderStepped:Connect(function()
         end
     end
 end)
+
+-- ✅ 把遺失的「自瞄與自動扳機」引擎加回來了！
+RunService:BindToRenderStep("MyMouseAimLoop", Enum.RenderPriority.Camera.Value + 1, function()
+    if isAimbotActive and silentAimTarget and silentAimTarget:FindFirstChild("Head") then
+        local headPos = silentAimTarget.Head.Position
+        local targetPos, onScreen = Camera:WorldToViewportPoint(headPos)
+        if onScreen then
+            if mousemoverel then
+                local center = Camera.ViewportSize / 2
+                local moveX = (targetPos.X - center.X) / AIM_SMOOTHNESS
+                local moveY = (targetPos.Y - center.Y) / AIM_SMOOTHNESS
+                moveX = moveX + math.random(-1, 1) * 0.2; moveY = moveY + math.random(-1, 1) * 0.2
+                pcall(function() mousemoverel(moveX, moveY) end)
+            else
+                local currentCFrame = Camera.CFrame
+                local targetCFrame = CFrame.lookAt(currentCFrame.Position, headPos)
+                Camera.CFrame = currentCFrame:Lerp(targetCFrame, 0.5 / AIM_SMOOTHNESS)
+            end
+        end
+    end
+
+    if isTriggerBotActive then
+        local target = Mouse.Target
+        if target and target.Parent then
+            local char = target:FindFirstAncestorOfClass("Model")
+            if char and char:FindFirstChild("Humanoid") and char ~= LocalPlayer.Character then
+                local p = Players:GetPlayerFromCharacter(char)
+                if p and not ignoredPlayers[p.UserId] and char.Humanoid.Health > 0 then
+                    if tick() - lastClickTime > TRIGGER_DELAY then
+                        lastClickTime = tick()
+                        if mouse1click then pcall(function() mouse1click() end) end
+                    end
+                end
+            end
+        end
+    end
+end)
+
+-- ==========================================
+-- 🛡️ 7. 物理引擎
+-- ==========================================
 _G.MyPhysicsLoop = RunService.Stepped:Connect(function()
     local char = LocalPlayer.Character
     local hrp = char and char:FindFirstChild("HumanoidRootPart")
@@ -310,7 +372,6 @@ _G.MyPhysicsLoop = RunService.Stepped:Connect(function()
         local lookPos = Vector3.new(targetHead.X, hrp.Position.Y, targetHead.Z)
         hrp.CFrame = CFrame.lookAt(hrp.Position, lookPos)
     end
-
 
     if isFlingAuraActive and #flingLimbs > 0 then
         local t = os.clock() * AURA_SPEED
@@ -327,7 +388,6 @@ _G.MyPhysicsLoop = RunService.Stepped:Connect(function()
 
     if isNoclip then for _, part in ipairs(char:GetDescendants()) do if part:IsA("BasePart") then part.CanCollide = false end end end
     
-
     if isFlying or isMagnetActive or isHitAndRunActive or isAttacking or isFlingAuraActive then
         for _, part in ipairs(char:GetDescendants()) do if part:IsA("BasePart") then part.AssemblyAngularVelocity = Vector3.new(0,0,0) end end
     end
@@ -400,7 +460,9 @@ _G.MyESPLoop = RunService.Heartbeat:Connect(function()
     end)
 end)
 
-
+-- ==========================================
+-- ⌨️ 8. 事件綁定區
+-- ==========================================
 btnZ.MouseButton1Click:Connect(toggleIgnoreTarget)
 btnX.MouseButton1Click:Connect(function() toggleNoclip(); updateUI() end)
 btnC.MouseButton1Click:Connect(function() isFlying = not isFlying; updatePhysicsState(); updateUI() end)
