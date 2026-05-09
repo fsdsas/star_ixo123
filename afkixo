@@ -1,6 +1,3 @@
--- ==========================================================
--- 🌌 星輝商業發行版 (暴力轉向 & 視角定位 & 全服血滴子)
--- ==========================================================
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -12,9 +9,6 @@ local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 local Mouse = LocalPlayer:GetMouse()
 
--- ==========================================
--- 🔐 1. 終極防呆驗證系統 (雙重保險)
--- ==========================================
 local OWNER_ID = 4156480207 
 local OWNER_NAME = "blusshop_trade"
 
@@ -36,11 +30,8 @@ if not isOwner and not isFriend then
     return 
 end
 
-print("✅ 驗證通過！最高主宰: " .. myName)
+print("驗證通過！最高主宰: " .. myName)
 
--- ==========================================
--- 🧹 2. 系統清理與初始化
--- ==========================================
 local function cleanConn(name) if _G[name] then pcall(function() _G[name]:Disconnect() end); _G[name] = nil end end
 cleanConn("MyESPLoop"); cleanConn("MyActionBtns"); cleanConn("MyPhysicsLoop")
 cleanConn("MyTargetCacheLoop"); cleanConn("MyUIToggle"); cleanConn("MySliderCleaner") 
@@ -63,9 +54,6 @@ for i, pos in ipairs(platformOffsets) do
     voidPlatforms[i] = pos
 end
 
--- ==========================================
--- ⚙️ 3. 變數與核心邏輯
--- ==========================================
 local isNoclip, isFlying, isMagnetActive, isHitAndRunActive, isAttacking = false, false, false, false, false
 local isAimbotActive, isTriggerBotActive, isFlingAuraActive = false, false, false
 local isFullBrightActive, isFlickAimActive, isCamLockActive = false, false, false
@@ -106,7 +94,6 @@ local function updatePhysicsState()
         if isFlying or isMagnetActive or isHitAndRunActive or isAttacking or isFlingAuraActive then 
             hum:ChangeState(Enum.HumanoidStateType.Physics)
         else 
-            -- ✅ 隱蔽性修復：改回 None，避免別人看到殭屍滑步
             hum:ChangeState(Enum.HumanoidStateType.None) 
         end
     end
@@ -126,9 +113,7 @@ _G.MyCharRespawn = LocalPlayer.CharacterAdded:Connect(function()
     flingLimbs = {}; silentAimTarget = nil
 end)
 
--- ==========================================
--- 📱 4. UI 介面
--- ==========================================
+
 local screenGui = Instance.new("ScreenGui"); screenGui.Name = "MyControlPanel"; screenGui.ResetOnSpawn = false
 pcall(function() screenGui.Parent = game:GetService("CoreGui") end)
 if not screenGui.Parent then screenGui.Parent = LocalPlayer:WaitForChild("PlayerGui") end
@@ -219,9 +204,7 @@ local function updateUI()
     btnK.BackgroundColor3 = isCamLockActive and cAttack or cOff; btnK.Text = "K : 視角定位 " .. (isCamLockActive and "[開]" or "[關]")
 end
 
--- ==========================================
--- 🎯 5. 核心防護、自瞄與物理運算
--- ==========================================
+
 local function toggleIgnoreTarget()
     local centerPos = Camera.ViewportSize / 2; local closestChar, shortestDist = nil, AIMBOT_FOV
     for _, p in ipairs(Players:GetPlayers()) do
@@ -291,7 +274,6 @@ local function getClosestEnemy()
     return closestChar
 end
 
--- ✅ 修復渲染迴圈：整合防閃退與所有視覺修改
 _G.MyTargetCacheLoop = RunService.RenderStepped:Connect(function()
     -- 1. 夜視除霧
     if isFullBrightActive then
@@ -361,14 +343,13 @@ _G.MyPhysicsLoop = RunService.Stepped:Connect(function()
     local hrp = char and char:FindFirstChild("HumanoidRootPart")
     if not hrp or char.Humanoid.Health <= 0 then return end
 
-    -- 🎯 暴力轉向 (Flickbot)
     if isFlickAimActive and silentAimTarget and silentAimTarget:FindFirstChild("Head") then
         local targetHead = silentAimTarget.Head.Position
         local lookPos = Vector3.new(targetHead.X, hrp.Position.Y, targetHead.Z)
         hrp.CFrame = CFrame.lookAt(hrp.Position, lookPos)
     end
 
-    -- 🩸 血滴子
+
     if isFlingAuraActive and #flingLimbs > 0 then
         local t = os.clock() * AURA_SPEED
         for i, limb in ipairs(flingLimbs) do
@@ -384,7 +365,7 @@ _G.MyPhysicsLoop = RunService.Stepped:Connect(function()
 
     if isNoclip then for _, part in ipairs(char:GetDescendants()) do if part:IsA("BasePart") then part.CanCollide = false end end end
     
-    -- ✅ 隱蔽性修復：只在需要對抗物理時鎖定角速度
+
     if isFlying or isMagnetActive or isHitAndRunActive or isAttacking or isFlingAuraActive then
         for _, part in ipairs(char:GetDescendants()) do if part:IsA("BasePart") then part.AssemblyAngularVelocity = Vector3.new(0,0,0) end end
     end
@@ -457,9 +438,7 @@ _G.MyESPLoop = RunService.Heartbeat:Connect(function()
     end)
 end)
 
--- ==========================================
--- ⌨️ 6. 事件綁定區 (UI & 快捷鍵)
--- ==========================================
+
 btnZ.MouseButton1Click:Connect(toggleIgnoreTarget)
 btnX.MouseButton1Click:Connect(function() toggleNoclip(); updateUI() end)
 btnC.MouseButton1Click:Connect(function() isFlying = not isFlying; updatePhysicsState(); updateUI() end)
