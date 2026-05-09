@@ -44,9 +44,16 @@ if _G.FOVCircle then _G.FOVCircle:Remove(); _G.FOVCircle = nil end
 if _G.MyChamsFolder then pcall(function() _G.MyChamsFolder:Destroy() end); _G.MyChamsFolder = nil end
 if _G.MyUI then pcall(function() _G.MyUI:Destroy() end); _G.MyUI = nil end
 
-local FOVCircle = Drawing.new("Circle")
-FOVCircle.Visible = true; FOVCircle.Thickness = 1.5; FOVCircle.Color = Color3.fromRGB(0, 255, 255)
-FOVCircle.Filled = false; FOVCircle.Transparency = 0.8; _G.FOVCircle = FOVCircle
+local FOVCircle = nil
+if type(Drawing) == "table" and Drawing.new then
+    pcall(function()
+        FOVCircle = Drawing.new("Circle")
+        FOVCircle.Visible = true; FOVCircle.Thickness = 1.5; FOVCircle.Color = Color3.fromRGB(0, 255, 255)
+        FOVCircle.Filled = false; FOVCircle.Transparency = 0.8; _G.FOVCircle = FOVCircle
+    end)
+else
+    print("當前執行器不支援 Drawing API，已自動關閉 FOV 視覺光圈，但不影響自瞄功能。")
+end
 
 local voidPlatforms = {}
 local platformOffsets = { Vector3.new(0, 50000, 0), Vector3.new(2000, 50000, 0), Vector3.new(0, 50000, 2000), Vector3.new(2000, 50000, 2000) }
