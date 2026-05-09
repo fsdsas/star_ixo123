@@ -1,5 +1,5 @@
 -- ==========================================================
--- 🌌 星輝商業發行版 (地圖透視 X-Ray + 手機終極壓制版)
+-- 🌌 星輝商業發行版 (H鍵長按喚醒控制板 + 終極防衝突)
 -- ==========================================================
 
 local Players = game:GetService("Players")
@@ -34,8 +34,8 @@ end
 print("✅ 驗證通過！最高主宰: " .. myName)
 
 local function cleanConn(name) if _G[name] then pcall(function() _G[name]:Disconnect() end); _G[name] = nil end end
-cleanConn("MyESPLoop"); cleanConn("MyActionBtns"); cleanConn("MyPhysicsLoop")
-cleanConn("MyTargetCacheLoop"); cleanConn("MyUIToggle"); cleanConn("MySliderCleaner") 
+cleanConn("MyESPLoop"); cleanConn("MyActionBtns"); cleanConn("MyActionBtnsEnd")
+cleanConn("MyPhysicsLoop"); cleanConn("MyTargetCacheLoop"); cleanConn("MyUIToggle"); cleanConn("MySliderCleaner") 
 pcall(function() RunService:UnbindFromRenderStep("MyMouseAimLoop") end)
 if _G.FOVCircle then _G.FOVCircle:Remove(); _G.FOVCircle = nil end
 if _G.MyChamsFolder then pcall(function() _G.MyChamsFolder:Destroy() end); _G.MyChamsFolder = nil end
@@ -49,7 +49,7 @@ if type(Drawing) == "table" and Drawing.new then
         FOVCircle.Filled = false; FOVCircle.Transparency = 0.8; _G.FOVCircle = FOVCircle
     end)
 else
-    print("⚠️ 警告：當前執行器不支援 Drawing API，已自動關閉 FOV 視覺光圈，但不影響自瞄功能。")
+    print("⚠️ 當前執行器不支援 Drawing API，已自動關閉 FOV 視覺光圈。")
 end
 
 local voidPlatforms = {}
@@ -69,8 +69,6 @@ local flingLimbs = {}
 local AURA_RADIUS, AURA_SPEED = 12, 15 
 local FLY_SPEED, AIMBOT_FOV, MAX_ATTACK_RANGE, AIM_SMOOTHNESS, TRIGGER_DELAY, BEHIND_OFFSET = 300, 150, 440, 8, 0.05, 4
 local ignoredPlayers, silentAimTarget, safeCFrame, hasSavedCFrame, lastClickTime = {}, nil, nil, false, 0
-
--- ✅ 新增：地圖透視 (X-Ray) 變數
 local isXrayActive = false
 local originalTransparencies = {}
 
@@ -115,23 +113,18 @@ local function toggleCamState()
     end
 end
 
--- ✅ 新增：地圖透視 (X-Ray) 切換引擎
 local function toggleXray()
     isXrayActive = not isXrayActive
     if isXrayActive then
         for _, obj in ipairs(workspace:GetDescendants()) do
             if obj:IsA("BasePart") and not obj.Parent:FindFirstChild("Humanoid") and obj.Name ~= "HumanoidRootPart" then
-                if originalTransparencies[obj] == nil then
-                    originalTransparencies[obj] = obj.Transparency
-                end
-                obj.Transparency = 0.5 -- 半透明化
+                if originalTransparencies[obj] == nil then originalTransparencies[obj] = obj.Transparency end
+                obj.Transparency = 0.5 
             end
         end
     else
         for obj, trans in pairs(originalTransparencies) do
-            if obj and obj.Parent then
-                obj.Transparency = trans
-            end
+            if obj and obj.Parent then obj.Transparency = trans end
         end
         originalTransparencies = {}
     end
@@ -158,11 +151,14 @@ end
 _G.MyCharRespawn = LocalPlayer.CharacterAdded:Connect(function()
     isMagnetActive, isFlying, isNoclip, isAimbotActive = false, false, false, false
     isHitAndRunActive, isTriggerBotActive, isAttacking, isFlingAuraActive = false, false, false, false
-    isFullBrightActive, isFlickAimActive = false, false
-    camState = 0
-    flingLimbs = {}; silentAimTarget = nil
+    isFullBrightActive, isFlickAimActive, isXrayActive = false, false, false
+    camState = 0; flingLimbs = {}; silentAimTarget = nil
+    originalTransparencies = {}
 end)
 
+-- ==========================================
+-- 📱 4. UI 介面與控制板
+-- ==========================================
 local screenGui = Instance.new("ScreenGui"); screenGui.Name = "MyControlPanel"; screenGui.ResetOnSpawn = false
 pcall(function() screenGui.Parent = game:GetService("CoreGui") end)
 if not screenGui.Parent then screenGui.Parent = LocalPlayer:WaitForChild("PlayerGui") end
@@ -177,7 +173,14 @@ mobileToggleBtn.Font = Enum.Font.GothamBold; mobileToggleBtn.TextSize = 12; mobi
 local mainFrame = Instance.new("Frame", screenGui)
 mainFrame.Size = UDim2.new(0, 240, 0.6, 0); mainFrame.Position = UDim2.new(0.5, 0, 0.2, 0)
 mainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20); mainFrame.BorderSizePixel = 1; mainFrame.BorderColor3 = Color3.fromRGB(0, 255, 255)
-mainFrame.Active = true; mainFrame.Draggable = true 
+mainFrame.Active = true; mainFrame.Draggable = true
+mainFrame.Visible = false -- 預設隱藏
+
+local title = Instance.new("TextLabel", mainFrame)
+title.Size = UDim2.new(1, 0, 0, 30); title.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
+title.TextColor3 = Color3.fromRGB(0, 255, 255); title.Font = Enum.Font.GothamBold; title.TextSize = 13
+title.Text = "星輝系統 (長按 H 喚醒)"
+
 mobileToggleBtn.MouseButton1Click:Connect(function() mainFrame.Visible = not mainFrame.Visible end)
 
 local scrollFrame = Instance.new("ScrollingFrame", mainFrame)
@@ -185,11 +188,12 @@ scrollFrame.Size = UDim2.new(1, 0, 1, -30); scrollFrame.Position = UDim2.new(0, 
 scrollFrame.BackgroundTransparency = 1; scrollFrame.ScrollBarThickness = 4
 scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 820) 
 
-local function createButton(name, hotkeyText, yPos)
+local function createButton(hotkeyText, name, yPos)
     local btn = Instance.new("TextButton", scrollFrame)
     btn.Size = UDim2.new(1, -20, 0, 35); btn.Position = UDim2.new(0, 10, 0, yPos)
     btn.BackgroundColor3 = Color3.fromRGB(180, 50, 50); btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    btn.Font = Enum.Font.GothamBold; btn.TextSize = 13; btn.Text = hotkeyText .. " : " .. name .. " [關]"
+    btn.Font = Enum.Font.GothamBold; btn.TextSize = 13
+    btn.Text = (hotkeyText ~= "" and (hotkeyText .. " : ") or "") .. name .. " [關]"
     return btn
 end
 
@@ -217,19 +221,21 @@ local function createSlider(name, minVal, maxVal, currentVal, yPos, callback)
 end
 _G.MySliderCleaner = function() for _, conn in ipairs(sliderConnections) do conn:Disconnect() end end
 
-local btnZ = createButton("隊友保護", "Z", 10); btnZ.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
-local btnX = createButton("幽靈穿牆", "X", 50)
-local btnC = createButton("無重力飛天", "C", 90)
-local btnV = createButton("絕對瞬移背刺", "V", 130)
-local btnG = createButton("量子虛空待命", "G", 170) 
-local btnM = createButton("空降鎖定打擊", "M", 210)
-local btnB = createButton("血滴子死亡光環", "B", 250) 
-local btnF = createButton("平滑軌跡自瞄", "F", 290) 
-local btnT = createButton("死神自動扳機", "T", 330) 
-local btnY = createButton("夜視除霧系統", "Y", 370)
-local btnU = createButton("瞬時暴力轉向", "U", 410) 
-local btnK = createButton("視角切換系統", "K", 450) 
-local btnP = createButton("地圖物件透視", "P", 490) -- ✅ 新增透視按鈕
+-- ✅ 保留常用熱鍵顯示，拔除控制板專用功能的熱鍵顯示
+local btnZ = createButton("Z", "隊友保護", 10); btnZ.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+local btnX = createButton("X", "幽靈穿牆", 50)
+local btnC = createButton("C", "無重力飛天", 90)
+local btnV = createButton("V", "瞬移背刺", 130)
+local btnF = createButton("F", "平滑自瞄", 170) 
+
+local btnG = createButton("", "量子虛空待命", 210) 
+local btnM = createButton("", "空降鎖定打擊", 250)
+local btnB = createButton("", "血滴子死亡光環", 290) 
+local btnT = createButton("", "死神自動扳機", 330) 
+local btnY = createButton("", "夜視除霧系統", 370)
+local btnU = createButton("", "瞬時暴力轉向", 410) 
+local btnK = createButton("", "視角切換系統", 450) 
+local btnP = createButton("", "地圖物件透視", 490) 
 
 createSlider("FOVX 視覺範圍", 50, 500, AIMBOT_FOV, 530, function(val) AIMBOT_FOV = val; if FOVCircle then FOVCircle.Radius = val end end)
 createSlider("AI 平滑擬真度", 1, 20, AIM_SMOOTHNESS, 580, function(val) AIM_SMOOTHNESS = val end) 
@@ -242,24 +248,28 @@ local function updateUI()
     btnX.BackgroundColor3 = isNoclip and cOn or cOff; btnX.Text = "X : 幽靈穿牆 " .. (isNoclip and "[開]" or "[關]")
     btnC.BackgroundColor3 = isFlying and cOn or cOff; btnC.Text = "C : 無重力飛天 " .. (isFlying and "[開]" or "[關]")
     btnV.BackgroundColor3 = isMagnetActive and cOn or cOff; btnV.Text = "V : 瞬移背刺 " .. (isMagnetActive and "[開]" or "[關]")
-    btnG.BackgroundColor3 = isHitAndRunActive and cOn or cOff; btnG.Text = "G : 量子虛空 " .. (isHitAndRunActive and "[開]" or "[關]")
-    btnM.BackgroundColor3 = isAttacking and cAttack or cOff; btnM.Text = "M : 空降打擊 " .. (isAttacking and "[鎖定中]" or "[待命]")
-    btnB.BackgroundColor3 = isFlingAuraActive and cAttack or cOff; btnB.Text = "B : 血滴子光環 " .. (isFlingAuraActive and "[絞殺中]" or "[關]")
     btnF.BackgroundColor3 = isAimbotActive and cOn or cOff; btnF.Text = "F : 平滑自瞄 " .. (isAimbotActive and "[開]" or "[關]")
-    btnT.BackgroundColor3 = isTriggerBotActive and cTrigger or cOff; btnT.Text = "T : 自動扳機 " .. (isTriggerBotActive and "[警戒]" or "[關]")
-    btnY.BackgroundColor3 = isFullBrightActive and cOn or cOff; btnY.Text = "Y : 夜視除霧 " .. (isFullBrightActive and "[開]" or "[關]")
-    btnU.BackgroundColor3 = isFlickAimActive and cAttack or cOff; btnU.Text = "U : 暴力轉向 " .. (isFlickAimActive and "[開]" or "[關]")
-    btnP.BackgroundColor3 = isXrayActive and cOn or cOff; btnP.Text = "P : 地圖物件透視 " .. (isXrayActive and "[開]" or "[關]")
+    
+    btnG.BackgroundColor3 = isHitAndRunActive and cOn or cOff; btnG.Text = "量子虛空 " .. (isHitAndRunActive and "[開]" or "[關]")
+    btnM.BackgroundColor3 = isAttacking and cAttack or cOff; btnM.Text = "空降打擊 " .. (isAttacking and "[鎖定中]" or "[待命]")
+    btnB.BackgroundColor3 = isFlingAuraActive and cAttack or cOff; btnB.Text = "血滴子光環 " .. (isFlingAuraActive and "[絞殺中]" or "[關]")
+    btnT.BackgroundColor3 = isTriggerBotActive and cTrigger or cOff; btnT.Text = "自動扳機 " .. (isTriggerBotActive and "[警戒]" or "[關]")
+    btnY.BackgroundColor3 = isFullBrightActive and cOn or cOff; btnY.Text = "夜視除霧 " .. (isFullBrightActive and "[開]" or "[關]")
+    btnU.BackgroundColor3 = isFlickAimActive and cAttack or cOff; btnU.Text = "暴力轉向 " .. (isFlickAimActive and "[開]" or "[關]")
+    btnP.BackgroundColor3 = isXrayActive and cOn or cOff; btnP.Text = "地圖透視 " .. (isXrayActive and "[開]" or "[關]")
     
     if camState == 0 then
-        btnK.BackgroundColor3 = cOff; btnK.Text = "K : 視角切換 [正常]"
+        btnK.BackgroundColor3 = cOff; btnK.Text = "視角切換 [正常]"
     elseif camState == 1 then
-        btnK.BackgroundColor3 = Color3.fromRGB(200, 150, 50); btnK.Text = "K : 視角切換 [第三人稱]"
+        btnK.BackgroundColor3 = Color3.fromRGB(200, 150, 50); btnK.Text = "視角切換 [第三人稱]"
     elseif camState == 2 then
-        btnK.BackgroundColor3 = cAttack; btnK.Text = "K : 視角切換 [敵首定位]"
+        btnK.BackgroundColor3 = cAttack; btnK.Text = "視角切換 [敵首定位]"
     end
 end
 
+-- ==========================================
+-- 🎯 5. 核心邏輯
+-- ==========================================
 local function toggleIgnoreTarget()
     local centerPos = Camera.ViewportSize / 2; local closestChar, shortestDist = nil, AIMBOT_FOV
     for _, p in ipairs(Players:GetPlayers()) do
@@ -291,10 +301,7 @@ local function isValidTarget(char, requireOnScreen)
     if not hum or not head or hum.Health <= 0 then return false end
     local p = Players:GetPlayerFromCharacter(char)
     if not p or ignoredPlayers[p.UserId] then return false end
-    if requireOnScreen then
-        local _, onScreen = Camera:WorldToViewportPoint(head.Position)
-        return onScreen
-    end
+    if requireOnScreen then return select(2, Camera:WorldToViewportPoint(head.Position)) end
     return true
 end
 
@@ -331,43 +338,29 @@ end
 
 _G.MyTargetCacheLoop = RunService.RenderStepped:Connect(function()
     if isFullBrightActive then
-        Lighting.ClockTime = 12 
-        Lighting.FogEnd = 100000 
-        Lighting.GlobalShadows = false 
-        Lighting.Ambient = Color3.fromRGB(255, 255, 255) 
-        Lighting.OutdoorAmbient = Color3.fromRGB(255, 255, 255) 
+        Lighting.ClockTime = 12; Lighting.FogEnd = 100000; Lighting.GlobalShadows = false 
+        Lighting.Ambient = Color3.fromRGB(255, 255, 255); Lighting.OutdoorAmbient = Color3.fromRGB(255, 255, 255) 
     end
-
     if FOVCircle then FOVCircle.Position = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2) end
 
     if isAimbotActive or isFlickAimActive or camState == 2 then
         if not isValidTarget(silentAimTarget, true) then silentAimTarget = getClosestToCenter() end
-    else 
-        silentAimTarget = nil 
-    end
+    else silentAimTarget = nil end
 
     if camState == 1 then
         local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-        if hrp then
-            Camera.CameraType = Enum.CameraType.Scriptable
-            Camera.CFrame = CFrame.new(hrp.Position + (hrp.CFrame.LookVector * -12) + Vector3.new(0, 5, 0), hrp.Position)
-        end
+        if hrp then Camera.CameraType = Enum.CameraType.Scriptable; Camera.CFrame = CFrame.new(hrp.Position + (hrp.CFrame.LookVector * -12) + Vector3.new(0, 5, 0), hrp.Position) end
     elseif camState == 2 then
         if silentAimTarget and silentAimTarget:FindFirstChild("HumanoidRootPart") then
             local enemyHrp = silentAimTarget.HumanoidRootPart
-            Camera.CameraType = Enum.CameraType.Scriptable
-            Camera.CFrame = CFrame.new(enemyHrp.Position + (enemyHrp.CFrame.LookVector * -10) + Vector3.new(0, 5, 0), enemyHrp.Position)
+            Camera.CameraType = Enum.CameraType.Scriptable; Camera.CFrame = CFrame.new(enemyHrp.Position + (enemyHrp.CFrame.LookVector * -10) + Vector3.new(0, 5, 0), enemyHrp.Position)
         else
             local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-            if hrp then
-                Camera.CameraType = Enum.CameraType.Scriptable
-                Camera.CFrame = CFrame.new(hrp.Position + (hrp.CFrame.LookVector * -12) + Vector3.new(0, 5, 0), hrp.Position)
-            end
+            if hrp then Camera.CameraType = Enum.CameraType.Scriptable; Camera.CFrame = CFrame.new(hrp.Position + (hrp.CFrame.LookVector * -12) + Vector3.new(0, 5, 0), hrp.Position) end
         end
     end
 end)
 
--- ✅ 更新：強制壓制手機觸控系統的最高優先級自瞄
 RunService:BindToRenderStep("MyMouseAimLoop", Enum.RenderPriority.Last.Value, function()
     if isAimbotActive and silentAimTarget and silentAimTarget:FindFirstChild("Head") then
         local headPos = silentAimTarget.Head.Position
@@ -375,12 +368,10 @@ RunService:BindToRenderStep("MyMouseAimLoop", Enum.RenderPriority.Last.Value, fu
         if onScreen then
             if mousemoverel then
                 local center = Camera.ViewportSize / 2
-                local moveX = (targetPos.X - center.X) / AIM_SMOOTHNESS
-                local moveY = (targetPos.Y - center.Y) / AIM_SMOOTHNESS
+                local moveX = (targetPos.X - center.X) / AIM_SMOOTHNESS; local moveY = (targetPos.Y - center.Y) / AIM_SMOOTHNESS
                 moveX = moveX + math.random(-1, 1) * 0.2; moveY = moveY + math.random(-1, 1) * 0.2
                 pcall(function() mousemoverel(moveX, moveY) end)
             else
-                -- 手機強效 Lerp (抵抗螢幕滑動摩擦力)
                 local currentCFrame = Camera.CFrame
                 local targetCFrame = CFrame.lookAt(currentCFrame.Position, headPos)
                 Camera.CFrame = currentCFrame:Lerp(targetCFrame, 1 / (AIM_SMOOTHNESS * 0.5))
@@ -425,8 +416,7 @@ _G.MyPhysicsLoop = RunService.Stepped:Connect(function()
             limb.AssemblyLinearVelocity = offset.Unit * 8000 + Vector3.new(0, 5000, 0)
             limb.AssemblyAngularVelocity = Vector3.new(8000, 8000, 8000)
         end
-        hrp.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
-        hrp.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
+        hrp.AssemblyLinearVelocity = Vector3.new(0, 0, 0); hrp.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
     end
 
     if isNoclip then for _, part in ipairs(char:GetDescendants()) do if part:IsA("BasePart") then part.CanCollide = false end end end
@@ -442,9 +432,7 @@ _G.MyPhysicsLoop = RunService.Stepped:Connect(function()
             if not isValidTarget(target, false) then target = getClosestEnemy() end
             if target and target:FindFirstChild("Head") then
                 hrp.CFrame = CFrame.new(target.Head.Position + Vector3.new(0, 2, 0)) * CFrame.Angles(math.rad(-90), 0, 0)
-            elseif isHitAndRunActive then
-                hrp.CFrame = CFrame.new(voidPlatforms[1] + Vector3.new(0, 5, 0)) 
-            end
+            elseif isHitAndRunActive then hrp.CFrame = CFrame.new(voidPlatforms[1] + Vector3.new(0, 5, 0)) end
         else 
             hrp.CFrame = CFrame.new(voidPlatforms[math.floor(os.clock() * 8) % 4 + 1] + Vector3.new(0, 5, 0)) 
         end
@@ -482,42 +470,32 @@ _G.MyPhysicsLoop = RunService.Stepped:Connect(function()
     end
 end)
 
--- ✅ 更新：無敵版手機 3D 幾何透視 ESP (無視畫質設定)
 local chamsFolder = Instance.new("Folder", workspace)
 chamsFolder.Name = "MyMobileESP"
 _G.MyChamsFolder = chamsFolder
-
 _G.MyESPLoop = RunService.Heartbeat:Connect(function()
     pcall(function()
         for _, p in ipairs(Players:GetPlayers()) do
             if p == LocalPlayer then continue end
             local char = p.Character
-            
             if ignoredPlayers[p.UserId] or not char or not char:FindFirstChild("Humanoid") or char.Humanoid.Health <= 0 then
-                if chamsFolder:FindFirstChild(p.Name) then chamsFolder[p.Name]:Destroy() end
-                continue
+                if chamsFolder:FindFirstChild(p.Name) then chamsFolder[p.Name]:Destroy() end; continue
             end
-            
             local espNode = chamsFolder:FindFirstChild(p.Name)
             if not espNode then
-                espNode = Instance.new("Folder", chamsFolder)
-                espNode.Name = p.Name
+                espNode = Instance.new("Folder", chamsFolder); espNode.Name = p.Name
                 for _, part in ipairs(char:GetChildren()) do
                     if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
                         local box = Instance.new("BoxHandleAdornment", espNode)
-                        box.Adornee = part
-                        box.AlwaysOnTop = true
-                        box.ZIndex = 10
+                        box.Adornee = part; box.AlwaysOnTop = true; box.ZIndex = 10
                         box.Size = part.Size + Vector3.new(0.05, 0.05, 0.05)
-                        box.Transparency = 0.5
-                        box.Color3 = Color3.fromRGB(255, 0, 0)
+                        box.Transparency = 0.5; box.Color3 = Color3.fromRGB(255, 0, 0)
                     end
                 end
             else
                 for _, box in ipairs(espNode:GetChildren()) do
                     if box:IsA("BoxHandleAdornment") and (not box.Adornee or not box.Adornee.Parent) then
-                        espNode:Destroy()
-                        break
+                        espNode:Destroy(); break
                     end
                 end
             end
@@ -525,6 +503,9 @@ _G.MyESPLoop = RunService.Heartbeat:Connect(function()
     end)
 end)
 
+-- ==========================================
+-- ⌨️ 8. 事件與 H 鍵動態控制板
+-- ==========================================
 btnZ.MouseButton1Click:Connect(toggleIgnoreTarget)
 btnX.MouseButton1Click:Connect(function() toggleNoclip(); updateUI() end)
 btnC.MouseButton1Click:Connect(function() isFlying = not isFlying; updatePhysicsState(); updateUI() end)
@@ -539,10 +520,7 @@ btnU.MouseButton1Click:Connect(function() toggleFlickAim(); updateUI() end)
 btnK.MouseButton1Click:Connect(function() toggleCamState(); updateUI() end)
 btnP.MouseButton1Click:Connect(function() toggleXray(); updateUI() end)
 
-_G.MyUIToggle = UserInputService.InputBegan:Connect(function(input, gp)
-    if not gp and input.KeyCode == Enum.KeyCode.Insert then mainFrame.Visible = not mainFrame.Visible end
-end)
-
+-- ✅ 核心修改：保留 5 個核心戰鬥熱鍵，加入 H 鍵長按顯示控制板
 _G.MyActionBtns = UserInputService.InputBegan:Connect(function(input, gp)
     if gp then return end
     local key = input.KeyCode
@@ -550,17 +528,18 @@ _G.MyActionBtns = UserInputService.InputBegan:Connect(function(input, gp)
     elseif key == Enum.KeyCode.X then toggleNoclip()
     elseif key == Enum.KeyCode.C then isFlying = not isFlying; updatePhysicsState()
     elseif key == Enum.KeyCode.V then isMagnetActive = not isMagnetActive; updatePhysicsState()
-    elseif key == Enum.KeyCode.G then isHitAndRunActive = not isHitAndRunActive; updatePhysicsState()
-    elseif key == Enum.KeyCode.M then isAttacking = not isAttacking; updatePhysicsState() 
-    elseif key == Enum.KeyCode.B then toggleFlingAura()
     elseif key == Enum.KeyCode.F then isAimbotActive = not isAimbotActive
-    elseif key == Enum.KeyCode.T then isTriggerBotActive = not isTriggerBotActive
-    elseif key == Enum.KeyCode.Y then isFullBrightActive = not isFullBrightActive
-    elseif key == Enum.KeyCode.U then toggleFlickAim()
-    elseif key == Enum.KeyCode.K then toggleCamState()
-    elseif key == Enum.KeyCode.P then toggleXray()
+    elseif key == Enum.KeyCode.H then mainFrame.Visible = true -- 長按 H 顯示面板
     end
     updateUI()
+end)
+
+-- ✅ 新增：鬆開 H 鍵時，控制面板瞬間隱藏
+_G.MyActionBtnsEnd = UserInputService.InputEnded:Connect(function(input, gp)
+    if gp then return end
+    if input.KeyCode == Enum.KeyCode.H then
+        mainFrame.Visible = false
+    end
 end)
 
 updateUI()
