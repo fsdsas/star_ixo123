@@ -17,15 +17,49 @@ local myID = LocalPlayer.UserId
 local isOwner = (myName == OWNER_NAME or myID == OWNER_ID)
 local isFriend = false
 
-if not isOwner then
-    for i = 1, 3 do
-        local success, result = pcall(function() return LocalPlayer:IsFriendsWith(OWNER_ID) end)
-        if success and result == true then isFriend = true; break end
-        task.wait(0.5) 
+
+local OWNER_ID = 4156480207 
+local OWNER_NAME = "blusshop_trade"
+
+
+local VIP_LIST = {
+    [1] = true,  
+    [10581339102] = true,  
+}
+
+local myName = LocalPlayer.Name
+local myID = LocalPlayer.UserId
+
+
+local isAuthorized = (myName == OWNER_NAME or myID == OWNER_ID or VIP_LIST[myID])
+
+if not isAuthorized then
+    print("[星輝系統] 正在連接伺服器驗證好友身分 請稍候...")
+    
+    
+    for i = 1, 5 do 
+        local success, result = pcall(function() 
+            return LocalPlayer:IsFriendsWith(OWNER_ID) 
+        end)
+        
+        if success then
+            if result == true then 
+                isAuthorized = true 
+                break 
+            elseif result == false then
+            end
+        else
+            warn("好友驗證 讀取延遲 正在重試... (" .. i .. "/5)")
+        end
+        
+        task.wait(1.5) 
     end
 end
-if not isOwner and not isFriend then
-    LocalPlayer:Kick("\n【星輝系統】驗證失敗！\n1. 請確認已加作者 ("..OWNER_NAME..") 為好友。\n您的帳號: " .. myName)
+
+
+if not isAuthorized then
+    
+    LocalPlayer:Kick("\n【星輝系統】驗證失敗！\n1. 網路超時 或 未加作者好友\n2. 請加作者: " .. OWNER_NAME .. "\n\n若已加好友仍失敗，請截圖此畫面給作者：\n您的帳號: " .. myName .. "\n您的 ID: " .. myID)
     return 
 end
 
