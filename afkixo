@@ -23,7 +23,7 @@ local OWNER_NAME = "blusshop_trade"
 
 
 local VIP_LIST = {
-    [1] = true,  
+    [10971126597] = true,  
     [10581339102] = true,  
 }
 
