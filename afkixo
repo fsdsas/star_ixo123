@@ -1,6 +1,4 @@
--- ==========================================================
--- 🌌 星輝商業發行版 (H鍵長按喚醒控制板 + 終極防衝突)
--- ==========================================================
+
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -31,7 +29,7 @@ if not isOwner and not isFriend then
     return 
 end
 
-print("✅ 驗證通過！最高主宰: " .. myName)
+print("驗證通過！最高主宰: " .. myName)
 
 local function cleanConn(name) if _G[name] then pcall(function() _G[name]:Disconnect() end); _G[name] = nil end end
 cleanConn("MyESPLoop"); cleanConn("MyActionBtns"); cleanConn("MyActionBtnsEnd")
@@ -48,8 +46,6 @@ if type(Drawing) == "table" and Drawing.new then
         FOVCircle.Visible = true; FOVCircle.Thickness = 1.5; FOVCircle.Color = Color3.fromRGB(0, 255, 255)
         FOVCircle.Filled = false; FOVCircle.Transparency = 0.8; _G.FOVCircle = FOVCircle
     end)
-else
-    print("⚠️ 當前執行器不支援 Drawing API，已自動關閉 FOV 視覺光圈。")
 end
 
 local voidPlatforms = {}
@@ -72,93 +68,10 @@ local ignoredPlayers, silentAimTarget, safeCFrame, hasSavedCFrame, lastClickTime
 local isXrayActive = false
 local originalTransparencies = {}
 
-local function toggleFlingAura()
-    isFlingAuraActive = not isFlingAuraActive
-    local char = LocalPlayer.Character
-    if not char then return end
-    if isFlingAuraActive then
-        flingLimbs = {}
-        for _, part in ipairs(char:GetChildren()) do
-            if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" and part.Name ~= "Head" and part.Name ~= "Torso" and part.Name ~= "UpperTorso" then
-                for _, joint in ipairs(part:GetDescendants()) do
-                    if joint:IsA("Motor6D") or joint:IsA("Weld") then joint.Part0 = nil end
-                end
-                part.CanCollide = true
-                table.insert(flingLimbs, part)
-            end
-        end
-    else
-        flingLimbs = {}
-    end
-end
+local HEADSHOT_CHANCE = 50 
+local currentAimPartName = "HumanoidRootPart" 
 
-local function toggleFlickAim() isFlickAimActive = not isFlickAimActive end
 
-local origCamSettings = {} 
-local function toggleCamState()
-    local oldState = camState
-    camState = (camState + 1) % 3
-    if oldState == 0 and camState ~= 0 then
-        origCamSettings.Type = Camera.CameraType
-        origCamSettings.Subject = Camera.CameraSubject
-        origCamSettings.Mode = LocalPlayer.CameraMode
-        origCamSettings.MinZ = LocalPlayer.CameraMinZoomDistance
-        origCamSettings.MaxZ = LocalPlayer.CameraMaxZoomDistance
-    elseif camState == 0 then
-        Camera.CameraType = origCamSettings.Type or Enum.CameraType.Custom
-        if origCamSettings.Subject then Camera.CameraSubject = origCamSettings.Subject end
-        LocalPlayer.CameraMode = origCamSettings.Mode or Enum.CameraMode.Classic
-        LocalPlayer.CameraMinZoomDistance = origCamSettings.MinZ or 0.5
-        LocalPlayer.CameraMaxZoomDistance = origCamSettings.MaxZ or 128
-    end
-end
-
-local function toggleXray()
-    isXrayActive = not isXrayActive
-    if isXrayActive then
-        for _, obj in ipairs(workspace:GetDescendants()) do
-            if obj:IsA("BasePart") and not obj.Parent:FindFirstChild("Humanoid") and obj.Name ~= "HumanoidRootPart" then
-                if originalTransparencies[obj] == nil then originalTransparencies[obj] = obj.Transparency end
-                obj.Transparency = 0.5 
-            end
-        end
-    else
-        for obj, trans in pairs(originalTransparencies) do
-            if obj and obj.Parent then obj.Transparency = trans end
-        end
-        originalTransparencies = {}
-    end
-end
-
-local function updatePhysicsState()
-    local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid")
-    if hum and hum.Health > 0 then
-        if isFlying or isMagnetActive or isHitAndRunActive or isAttacking or isFlingAuraActive then 
-            hum:ChangeState(Enum.HumanoidStateType.Physics)
-        else 
-            hum:ChangeState(Enum.HumanoidStateType.GettingUp) 
-        end
-    end
-end
-
-local function toggleNoclip()
-    isNoclip = not isNoclip
-    if not isNoclip and LocalPlayer.Character then
-        for _, part in ipairs(LocalPlayer.Character:GetDescendants()) do if part:IsA("BasePart") then part.CanCollide = true end end
-    end
-end
-
-_G.MyCharRespawn = LocalPlayer.CharacterAdded:Connect(function()
-    isMagnetActive, isFlying, isNoclip, isAimbotActive = false, false, false, false
-    isHitAndRunActive, isTriggerBotActive, isAttacking, isFlingAuraActive = false, false, false, false
-    isFullBrightActive, isFlickAimActive, isXrayActive = false, false, false
-    camState = 0; flingLimbs = {}; silentAimTarget = nil
-    originalTransparencies = {}
-end)
-
--- ==========================================
--- 📱 4. UI 介面與控制板
--- ==========================================
 local screenGui = Instance.new("ScreenGui"); screenGui.Name = "MyControlPanel"; screenGui.ResetOnSpawn = false
 pcall(function() screenGui.Parent = game:GetService("CoreGui") end)
 if not screenGui.Parent then screenGui.Parent = LocalPlayer:WaitForChild("PlayerGui") end
@@ -173,8 +86,7 @@ mobileToggleBtn.Font = Enum.Font.GothamBold; mobileToggleBtn.TextSize = 12; mobi
 local mainFrame = Instance.new("Frame", screenGui)
 mainFrame.Size = UDim2.new(0, 240, 0.6, 0); mainFrame.Position = UDim2.new(0.5, 0, 0.2, 0)
 mainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20); mainFrame.BorderSizePixel = 1; mainFrame.BorderColor3 = Color3.fromRGB(0, 255, 255)
-mainFrame.Active = true; mainFrame.Draggable = true
-mainFrame.Visible = false -- 預設隱藏
+mainFrame.Active = true; mainFrame.Draggable = true; mainFrame.Visible = false 
 
 local title = Instance.new("TextLabel", mainFrame)
 title.Size = UDim2.new(1, 0, 0, 30); title.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
@@ -186,7 +98,7 @@ mobileToggleBtn.MouseButton1Click:Connect(function() mainFrame.Visible = not mai
 local scrollFrame = Instance.new("ScrollingFrame", mainFrame)
 scrollFrame.Size = UDim2.new(1, 0, 1, -30); scrollFrame.Position = UDim2.new(0, 0, 0, 30)
 scrollFrame.BackgroundTransparency = 1; scrollFrame.ScrollBarThickness = 4
-scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 820) 
+scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 800) 
 
 local function createButton(hotkeyText, name, yPos)
     local btn = Instance.new("TextButton", scrollFrame)
@@ -221,13 +133,11 @@ local function createSlider(name, minVal, maxVal, currentVal, yPos, callback)
 end
 _G.MySliderCleaner = function() for _, conn in ipairs(sliderConnections) do conn:Disconnect() end end
 
--- ✅ 保留常用熱鍵顯示，拔除控制板專用功能的熱鍵顯示
 local btnZ = createButton("Z", "隊友保護", 10); btnZ.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
 local btnX = createButton("X", "幽靈穿牆", 50)
 local btnC = createButton("C", "無重力飛天", 90)
 local btnV = createButton("V", "瞬移背刺", 130)
 local btnF = createButton("F", "平滑自瞄", 170) 
-
 local btnG = createButton("", "量子虛空待命", 210) 
 local btnM = createButton("", "空降鎖定打擊", 250)
 local btnB = createButton("", "血滴子死亡光環", 290) 
@@ -240,6 +150,7 @@ local btnP = createButton("", "地圖物件透視", 490)
 createSlider("FOVX 視覺範圍", 50, 500, AIMBOT_FOV, 530, function(val) AIMBOT_FOV = val; if FOVCircle then FOVCircle.Radius = val end end)
 createSlider("AI 平滑擬真度", 1, 20, AIM_SMOOTHNESS, 580, function(val) AIM_SMOOTHNESS = val end) 
 createSlider("扳機連發延遲", 10, 200, TRIGGER_DELAY * 1000, 630, function(val) TRIGGER_DELAY = val / 1000 end) 
+createSlider("爆頭機率 (%)", 0, 100, HEADSHOT_CHANCE, 680, function(val) HEADSHOT_CHANCE = val end) 
 
 local function updateUI()
     local cOn = Color3.fromRGB(50, 180, 50); local cOff = Color3.fromRGB(180, 50, 50)
@@ -256,20 +167,14 @@ local function updateUI()
     btnT.BackgroundColor3 = isTriggerBotActive and cTrigger or cOff; btnT.Text = "自動扳機 " .. (isTriggerBotActive and "[警戒]" or "[關]")
     btnY.BackgroundColor3 = isFullBrightActive and cOn or cOff; btnY.Text = "夜視除霧 " .. (isFullBrightActive and "[開]" or "[關]")
     btnU.BackgroundColor3 = isFlickAimActive and cAttack or cOff; btnU.Text = "暴力轉向 " .. (isFlickAimActive and "[開]" or "[關]")
-    btnP.BackgroundColor3 = isXrayActive and cOn or cOff; btnP.Text = "地圖透視 " .. (isXrayActive and "[開]" or "[關]")
+    btnP.BackgroundColor3 = isXrayActive and cOn or cOff; btnP.Text = "地圖物件透視 " .. (isXrayActive and "[開]" or "[關]")
     
-    if camState == 0 then
-        btnK.BackgroundColor3 = cOff; btnK.Text = "視角切換 [正常]"
-    elseif camState == 1 then
-        btnK.BackgroundColor3 = Color3.fromRGB(200, 150, 50); btnK.Text = "視角切換 [第三人稱]"
-    elseif camState == 2 then
-        btnK.BackgroundColor3 = cAttack; btnK.Text = "視角切換 [敵首定位]"
-    end
+    if camState == 0 then btnK.BackgroundColor3 = cOff; btnK.Text = "視角切換 [正常]"
+    elseif camState == 1 then btnK.BackgroundColor3 = Color3.fromRGB(200, 150, 50); btnK.Text = "視角切換 [第三人稱]"
+    elseif camState == 2 then btnK.BackgroundColor3 = cAttack; btnK.Text = "視角切換 [敵首定位]" end
 end
 
--- ==========================================
--- 🎯 5. 核心邏輯
--- ==========================================
+
 local function toggleIgnoreTarget()
     local centerPos = Camera.ViewportSize / 2; local closestChar, shortestDist = nil, AIMBOT_FOV
     for _, p in ipairs(Players:GetPlayers()) do
@@ -297,11 +202,11 @@ end
 
 local function isValidTarget(char, requireOnScreen)
     if not char then return false end
-    local hum = char:FindFirstChild("Humanoid"); local head = char:FindFirstChild("Head")
-    if not hum or not head or hum.Health <= 0 then return false end
+    local hum = char:FindFirstChild("Humanoid"); local root = char:FindFirstChild("HumanoidRootPart")
+    if not hum or not root or hum.Health <= 0 then return false end
     local p = Players:GetPlayerFromCharacter(char)
     if not p or ignoredPlayers[p.UserId] then return false end
-    if requireOnScreen then return select(2, Camera:WorldToViewportPoint(head.Position)) end
+    if requireOnScreen then return select(2, Camera:WorldToViewportPoint(root.Position)) end
     return true
 end
 
@@ -309,9 +214,9 @@ local function getClosestToCenter()
     local centerPos = Camera.ViewportSize / 2; local closestChar, shortestDist = nil, AIMBOT_FOV
     for _, p in ipairs(Players:GetPlayers()) do
         if p ~= LocalPlayer and p.Character and not ignoredPlayers[p.UserId] then
-            local head = p.Character:FindFirstChild("Head"); local hum = p.Character:FindFirstChild("Humanoid")
-            if head and hum and hum.Health > 0 then
-                local pos, onScreen = Camera:WorldToViewportPoint(head.Position)
+            local root = p.Character:FindFirstChild("HumanoidRootPart"); local hum = p.Character:FindFirstChild("Humanoid")
+            if root and hum and hum.Health > 0 then
+                local pos, onScreen = Camera:WorldToViewportPoint(root.Position)
                 if onScreen then
                     local dist = (Vector2.new(pos.X, pos.Y) - centerPos).Magnitude
                     if dist < shortestDist then shortestDist = dist; closestChar = p.Character end
@@ -326,15 +231,16 @@ local function getClosestEnemy()
     local closestDist, closestChar = math.huge, nil
     for _, p in ipairs(Players:GetPlayers()) do
         if p ~= LocalPlayer and p.Character and not ignoredPlayers[p.UserId] then
-            local head = p.Character:FindFirstChild("Head"); local hum = p.Character:FindFirstChild("Humanoid")
-            if head and hum and hum.Health > 0 then
-                local dist = (head.Position - Camera.CFrame.Position).Magnitude
+            local root = p.Character:FindFirstChild("HumanoidRootPart"); local hum = p.Character:FindFirstChild("Humanoid")
+            if root and hum and hum.Health > 0 then
+                local dist = (root.Position - Camera.CFrame.Position).Magnitude
                 if dist < closestDist then closestDist = dist; closestChar = p.Character end
             end
         end
     end
     return closestChar
 end
+
 
 _G.MyTargetCacheLoop = RunService.RenderStepped:Connect(function()
     if isFullBrightActive then
@@ -344,8 +250,16 @@ _G.MyTargetCacheLoop = RunService.RenderStepped:Connect(function()
     if FOVCircle then FOVCircle.Position = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2) end
 
     if isAimbotActive or isFlickAimActive or camState == 2 then
-        if not isValidTarget(silentAimTarget, true) then silentAimTarget = getClosestToCenter() end
-    else silentAimTarget = nil end
+        if not isValidTarget(silentAimTarget, true) then 
+            silentAimTarget = getClosestToCenter() 
+            if silentAimTarget then
+                if math.random(1, 100) <= HEADSHOT_CHANCE then currentAimPartName = "Head"
+                else currentAimPartName = "HumanoidRootPart" end
+            end
+        end
+    else 
+        silentAimTarget = nil 
+    end
 
     if camState == 1 then
         local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
@@ -362,9 +276,9 @@ _G.MyTargetCacheLoop = RunService.RenderStepped:Connect(function()
 end)
 
 RunService:BindToRenderStep("MyMouseAimLoop", Enum.RenderPriority.Last.Value, function()
-    if isAimbotActive and silentAimTarget and silentAimTarget:FindFirstChild("Head") then
-        local headPos = silentAimTarget.Head.Position
-        local targetPos, onScreen = Camera:WorldToViewportPoint(headPos)
+    if isAimbotActive and silentAimTarget and silentAimTarget:FindFirstChild(currentAimPartName) then
+        local aimPartPos = silentAimTarget[currentAimPartName].Position
+        local targetPos, onScreen = Camera:WorldToViewportPoint(aimPartPos)
         if onScreen then
             if mousemoverel then
                 local center = Camera.ViewportSize / 2
@@ -373,7 +287,7 @@ RunService:BindToRenderStep("MyMouseAimLoop", Enum.RenderPriority.Last.Value, fu
                 pcall(function() mousemoverel(moveX, moveY) end)
             else
                 local currentCFrame = Camera.CFrame
-                local targetCFrame = CFrame.lookAt(currentCFrame.Position, headPos)
+                local targetCFrame = CFrame.lookAt(currentCFrame.Position, aimPartPos)
                 Camera.CFrame = currentCFrame:Lerp(targetCFrame, 1 / (AIM_SMOOTHNESS * 0.5))
             end
         end
@@ -396,14 +310,77 @@ RunService:BindToRenderStep("MyMouseAimLoop", Enum.RenderPriority.Last.Value, fu
     end
 end)
 
+
+local function toggleFlingAura()
+    isFlingAuraActive = not isFlingAuraActive
+    local char = LocalPlayer.Character
+    if not char then return end
+    if isFlingAuraActive then
+        flingLimbs = {}
+        for _, part in ipairs(char:GetChildren()) do
+            if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" and part.Name ~= "Head" and part.Name ~= "Torso" and part.Name ~= "UpperTorso" then
+                for _, joint in ipairs(part:GetDescendants()) do if joint:IsA("Motor6D") or joint:IsA("Weld") then joint.Part0 = nil end end
+                part.CanCollide = true; table.insert(flingLimbs, part)
+            end
+        end
+    else flingLimbs = {} end
+end
+
+local function toggleFlickAim() isFlickAimActive = not isFlickAimActive end
+
+local origCamSettings = {} 
+local function toggleCamState()
+    local oldState = camState
+    camState = (camState + 1) % 3
+    if oldState == 0 and camState ~= 0 then
+        origCamSettings.Type = Camera.CameraType; origCamSettings.Subject = Camera.CameraSubject
+        origCamSettings.Mode = LocalPlayer.CameraMode; origCamSettings.MinZ = LocalPlayer.CameraMinZoomDistance; origCamSettings.MaxZ = LocalPlayer.CameraMaxZoomDistance
+    elseif camState == 0 then
+        Camera.CameraType = origCamSettings.Type or Enum.CameraType.Custom
+        if origCamSettings.Subject then Camera.CameraSubject = origCamSettings.Subject end
+        LocalPlayer.CameraMode = origCamSettings.Mode or Enum.CameraMode.Classic
+        LocalPlayer.CameraMinZoomDistance = origCamSettings.MinZ or 0.5; LocalPlayer.CameraMaxZoomDistance = origCamSettings.MaxZ or 128
+    end
+end
+
+local function toggleXray()
+    isXrayActive = not isXrayActive
+    if isXrayActive then
+        for _, obj in ipairs(workspace:GetDescendants()) do
+            if obj:IsA("BasePart") and not obj.Parent:FindFirstChild("Humanoid") and obj.Name ~= "HumanoidRootPart" then
+                if originalTransparencies[obj] == nil then originalTransparencies[obj] = obj.Transparency end
+                obj.Transparency = 0.5 
+            end
+        end
+    else
+        for obj, trans in pairs(originalTransparencies) do if obj and obj.Parent then obj.Transparency = trans end end
+        originalTransparencies = {}
+    end
+end
+
+local function updatePhysicsState()
+    local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid")
+    if hum and hum.Health > 0 then
+        if isFlying or isMagnetActive or isHitAndRunActive or isAttacking or isFlingAuraActive then hum:ChangeState(Enum.HumanoidStateType.Physics)
+        else hum:ChangeState(Enum.HumanoidStateType.GettingUp) end
+    end
+end
+
+local function toggleNoclip()
+    isNoclip = not isNoclip
+    if not isNoclip and LocalPlayer.Character then
+        for _, part in ipairs(LocalPlayer.Character:GetDescendants()) do if part:IsA("BasePart") then part.CanCollide = true end end
+    end
+end
+
 _G.MyPhysicsLoop = RunService.Stepped:Connect(function()
     local char = LocalPlayer.Character
     local hrp = char and char:FindFirstChild("HumanoidRootPart")
     if not hrp or char.Humanoid.Health <= 0 then return end
 
-    if isFlickAimActive and silentAimTarget and silentAimTarget:FindFirstChild("Head") then
-        local targetHead = silentAimTarget.Head.Position
-        local lookPos = Vector3.new(targetHead.X, hrp.Position.Y, targetHead.Z)
+    if isFlickAimActive and silentAimTarget and silentAimTarget:FindFirstChild(currentAimPartName) then
+        local aimPartPos = silentAimTarget[currentAimPartName].Position
+        local lookPos = Vector3.new(aimPartPos.X, hrp.Position.Y, aimPartPos.Z)
         hrp.CFrame = CFrame.lookAt(hrp.Position, lookPos)
     end
 
@@ -430,8 +407,8 @@ _G.MyPhysicsLoop = RunService.Stepped:Connect(function()
         if isAttacking then
             local target = silentAimTarget
             if not isValidTarget(target, false) then target = getClosestEnemy() end
-            if target and target:FindFirstChild("Head") then
-                hrp.CFrame = CFrame.new(target.Head.Position + Vector3.new(0, 2, 0)) * CFrame.Angles(math.rad(-90), 0, 0)
+            if target and target:FindFirstChild("HumanoidRootPart") then
+                hrp.CFrame = CFrame.new(target.HumanoidRootPart.Position + Vector3.new(0, 3, 0)) * CFrame.Angles(math.rad(-90), 0, 0)
             elseif isHitAndRunActive then hrp.CFrame = CFrame.new(voidPlatforms[1] + Vector3.new(0, 5, 0)) end
         else 
             hrp.CFrame = CFrame.new(voidPlatforms[math.floor(os.clock() * 8) % 4 + 1] + Vector3.new(0, 5, 0)) 
@@ -470,42 +447,116 @@ _G.MyPhysicsLoop = RunService.Stepped:Connect(function()
     end
 end)
 
+
 local chamsFolder = Instance.new("Folder", workspace)
 chamsFolder.Name = "MyMobileESP"
 _G.MyChamsFolder = chamsFolder
+
 _G.MyESPLoop = RunService.Heartbeat:Connect(function()
     pcall(function()
+        for _, espNode in ipairs(chamsFolder:GetChildren()) do
+            local p = Players:FindFirstChild(espNode.Name)
+            if not p or ignoredPlayers[p.UserId] or not p.Character or not p.Character:FindFirstChild("Humanoid") or p.Character.Humanoid.Health <= 0 then 
+                espNode:Destroy() 
+                local oldGui = screenGui:FindFirstChild("ToolESP_" .. espNode.Name)
+                if oldGui then oldGui:Destroy() end
+            end
+        end
+        
         for _, p in ipairs(Players:GetPlayers()) do
             if p == LocalPlayer then continue end
             local char = p.Character
-            if ignoredPlayers[p.UserId] or not char or not char:FindFirstChild("Humanoid") or char.Humanoid.Health <= 0 then
-                if chamsFolder:FindFirstChild(p.Name) then chamsFolder[p.Name]:Destroy() end; continue
-            end
-            local espNode = chamsFolder:FindFirstChild(p.Name)
-            if not espNode then
-                espNode = Instance.new("Folder", chamsFolder); espNode.Name = p.Name
-                for _, part in ipairs(char:GetChildren()) do
-                    if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
-                        local box = Instance.new("BoxHandleAdornment", espNode)
-                        box.Adornee = part; box.AlwaysOnTop = true; box.ZIndex = 10
-                        box.Size = part.Size + Vector3.new(0.05, 0.05, 0.05)
-                        box.Transparency = 0.5; box.Color3 = Color3.fromRGB(255, 0, 0)
+            
+            if char and char:FindFirstChild("HumanoidRootPart") and char:FindFirstChild("Humanoid") and char.Humanoid.Health > 0 and not ignoredPlayers[p.UserId] then
+                local hrp = char.HumanoidRootPart
+                local espNode = chamsFolder:FindFirstChild(p.Name)
+                
+                -- 透視框顏色：跟隨隊伍色 (預設紅色)
+                local espColor = Color3.fromRGB(255, 0, 0) 
+                if p.Team then espColor = p.TeamColor.Color end
+                
+                
+                if not espNode then
+                    espNode = Instance.new("Folder", chamsFolder); espNode.Name = p.Name
+                    local box = Instance.new("BoxHandleAdornment", espNode)
+                    box.Name = "BoundingBox"; box.Adornee = hrp; box.AlwaysOnTop = true; box.ZIndex = 10
+                    box.Size = Vector3.new(4, 5.5, 2); box.Transparency = 0.6; box.Color3 = espColor
+                else
+                    local box = espNode:FindFirstChild("BoundingBox")
+                    if box then 
+                        if box.Adornee ~= hrp then box.Adornee = hrp end
+                        box.Color3 = espColor
                     end
                 end
-            else
-                for _, box in ipairs(espNode:GetChildren()) do
-                    if box:IsA("BoxHandleAdornment") and (not box.Adornee or not box.Adornee.Parent) then
-                        espNode:Destroy(); break
+                
+                -- 繪製 2D 獨立面板 (顯示名稱與武器)
+                local toolGui = screenGui:FindFirstChild("ToolESP_" .. p.Name)
+                if not toolGui then
+                    toolGui = Instance.new("BillboardGui", screenGui)
+                    toolGui.Name = "ToolESP_" .. p.Name
+                    toolGui.Size = UDim2.new(0, 250, 0, 50) 
+                    toolGui.StudsOffset = Vector3.new(0, 3.5, 0)
+                    toolGui.AlwaysOnTop = true
+                    toolGui.MaxDistance = math.huge 
+                    
+                    local txt = Instance.new("TextLabel", toolGui)
+                    txt.Name = "Label"; txt.Size = UDim2.new(1, 0, 1, 0); txt.BackgroundTransparency = 1
+                    txt.TextStrokeTransparency = 0
+                    txt.Font = Enum.Font.GothamBold; txt.TextSize = 12
+                    txt.RichText = true 
+                    txt.Text = ""
+                end
+                
+                if toolGui.Adornee ~= hrp then toolGui.Adornee = hrp end
+                local txt = toolGui:FindFirstChild("Label")
+                if txt then
+                    
+                    local displayName = p.DisplayName
+                    local nameColor = "#FFFFFF" -- 名稱：白色高對比
+                    local toolStr = ""
+                    
+                    local tool = char:FindFirstChildOfClass("Tool")
+                    if tool then 
+                        toolStr = '<font color="#00FFFF">[ ' .. tool.Name .. ' ]</font>' 
+                    else 
+                        local backpack = p:FindFirstChild("Backpack")
+                        local hiddenTools = {}
+                        if backpack then
+                            for _, item in ipairs(backpack:GetChildren()) do
+                                if item:IsA("Tool") then table.insert(hiddenTools, item.Name) end
+                            end
+                        end
+                        
+                        if #hiddenTools > 0 then
+                            if #hiddenTools > 2 then
+                                toolStr = '<font color="#FFA500">[ ' .. hiddenTools[1] .. ', ' .. hiddenTools[2] .. '... ]</font>' 
+                            else
+                                toolStr = '<font color="#FFA500">[ ' .. table.concat(hiddenTools, ", ") .. ' ]</font>'
+                            end
+                        else
+                            toolStr = '<font color="#888888">[ 空手 ]</font>' -- 空手：低調灰
+                        end
                     end
+                    
+                    txt.Text = string.format('<font color="%s">%s</font>\n%s', nameColor, displayName, toolStr)
                 end
             end
         end
     end)
 end)
 
--- ==========================================
--- ⌨️ 8. 事件與 H 鍵動態控制板
--- ==========================================
+_G.MyCharRespawn = LocalPlayer.CharacterAdded:Connect(function()
+    isMagnetActive, isFlying, isNoclip, isAimbotActive = false, false, false, false
+    isHitAndRunActive, isTriggerBotActive, isAttacking, isFlingAuraActive = false, false, false, false
+    isFullBrightActive, isFlickAimActive, isXrayActive = false, false, false
+    camState = 0; flingLimbs = {}; silentAimTarget = nil; originalTransparencies = {}
+    
+    for _, v in ipairs(screenGui:GetChildren()) do
+        if v.Name:match("^ToolESP_") then v:Destroy() end
+    end
+end)
+
+
 btnZ.MouseButton1Click:Connect(toggleIgnoreTarget)
 btnX.MouseButton1Click:Connect(function() toggleNoclip(); updateUI() end)
 btnC.MouseButton1Click:Connect(function() isFlying = not isFlying; updatePhysicsState(); updateUI() end)
@@ -520,7 +571,6 @@ btnU.MouseButton1Click:Connect(function() toggleFlickAim(); updateUI() end)
 btnK.MouseButton1Click:Connect(function() toggleCamState(); updateUI() end)
 btnP.MouseButton1Click:Connect(function() toggleXray(); updateUI() end)
 
--- ✅ 核心修改：保留 5 個核心戰鬥熱鍵，加入 H 鍵長按顯示控制板
 _G.MyActionBtns = UserInputService.InputBegan:Connect(function(input, gp)
     if gp then return end
     local key = input.KeyCode
@@ -529,17 +579,14 @@ _G.MyActionBtns = UserInputService.InputBegan:Connect(function(input, gp)
     elseif key == Enum.KeyCode.C then isFlying = not isFlying; updatePhysicsState()
     elseif key == Enum.KeyCode.V then isMagnetActive = not isMagnetActive; updatePhysicsState()
     elseif key == Enum.KeyCode.F then isAimbotActive = not isAimbotActive
-    elseif key == Enum.KeyCode.H then mainFrame.Visible = true -- 長按 H 顯示面板
+    elseif key == Enum.KeyCode.H then mainFrame.Visible = true 
     end
     updateUI()
 end)
 
--- ✅ 新增：鬆開 H 鍵時，控制面板瞬間隱藏
 _G.MyActionBtnsEnd = UserInputService.InputEnded:Connect(function(input, gp)
     if gp then return end
-    if input.KeyCode == Enum.KeyCode.H then
-        mainFrame.Visible = false
-    end
+    if input.KeyCode == Enum.KeyCode.H then mainFrame.Visible = false end
 end)
 
 updateUI()
