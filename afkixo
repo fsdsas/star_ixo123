@@ -12,7 +12,7 @@ local Mouse = LocalPlayer:GetMouse()
 
 local isMobile = UserInputService.TouchEnabled and not UserInputService.MouseEnabled
 
--- 🟢 [ 模塊 1：核心變數與進階設定 ] --------------------------------
+-- [ 模塊 1：核心變數與進階設定 ] --------------------------------
 local Config = {
     -- 視覺與自瞄預設值
     FOV = 130,
@@ -52,7 +52,7 @@ local State = {
     xrayConnection = nil
 }
 
--- 🟢 [ 模塊 2：安全驗證與環境清理 ] --------------------------------
+-- [ 模塊 2：安全驗證與環境清理 ] --------------------------------
 local OWNER_ID = 4156480207 
 local OWNER_NAME = "blusshop_trade"
 local VIP_LIST = {10971126597}
@@ -60,7 +60,7 @@ local VIP_LIST = {10971126597}
 local function ValidateUser()
     local myID = LocalPlayer.UserId
     if LocalPlayer.Name == OWNER_NAME or myID == OWNER_ID or VIP_LIST[myID] then return true end
-    print("⏳ [星輝系統] 驗證好友身分中...")
+    print(" [星輝系統] 驗證好友身分中...")
     for i = 1, 5 do 
         local success, res = pcall(function() return LocalPlayer:IsFriendsWith(OWNER_ID) end)
         if success and res == true then return true end
@@ -101,7 +101,7 @@ for i, pos in ipairs(voidPlatforms) do
     plat.Anchored = true; plat.Transparency = 1; plat.Parent = workspace
 end
 
--- 🟢 [ 模塊 3：UI 渲染引擎 (深淵紫藍 + 腥紅邊框) ] --------------------------------
+-- [ 模塊 3：UI 渲染引擎 (深淵紫藍 + 腥紅邊框) ] --------------------------------
 local screenGui = Instance.new("ScreenGui"); screenGui.Name = "XingHuiHub"; screenGui.ResetOnSpawn = false
 pcall(function() screenGui.Parent = CoreGui end)
 if not screenGui.Parent then screenGui.Parent = LocalPlayer:WaitForChild("PlayerGui") end
@@ -285,7 +285,7 @@ local toggleNoclip = CreateToggle(PageMove, "幽靈穿牆", Config.isNoclip, nil
 local toggleESP = CreateToggle(PageVisual, "全圖透視總開關", Config.isESP, nil, function(v) Config.isESP = v end)
 local toggleFullBright = CreateToggle(PageVisual, "夜視除霧系統", Config.isFullBright, "Y", function(v) Config.isFullBright = v end)
 
--- ✅ [修復卡頓] X 光動態防卡系統 (非同步分流處理)
+-- [修復卡頓] X 光動態防卡系統 (非同步分流處理)
 local function updateXray(state)
     Config.isXray = state
     if state then
@@ -354,7 +354,7 @@ end)
 
 pages[1].Btn.TextColor3 = Colors.TextMain; pages[1].Page.Visible = true
 
--- 🟢 [ 模塊 4：目標偵測系統 (含 Raycast 掩體檢測) ] --------------------------------
+-- [ 模塊 4：目標偵測系統 (含 Raycast 掩體檢測) ] --------------------------------
 local function isVisible(targetPart)
     if not targetPart then return false end
     local origin = Camera.CFrame.Position
@@ -407,7 +407,7 @@ local function getClosestEnemy()
     return closestChar
 end
 
--- 🟢 [ 模塊 5：自瞄與觸發系統 ] --------------------------------
+-- [ 模塊 5：自瞄與觸發系統 ] --------------------------------
 _G.MyTargetCacheLoop = RunService.RenderStepped:Connect(function()
     if Config.isFullBright then Lighting.ClockTime = 12; Lighting.FogEnd = 100000; Lighting.GlobalShadows = false; Lighting.Ambient = Color3.fromRGB(255, 255, 255) end
     if FOVCircle then FOVCircle.Position = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2) end
@@ -470,7 +470,7 @@ RunService:BindToRenderStep("MyMouseAimLoop", Enum.RenderPriority.Last.Value, fu
     end
 end)
 
--- 🟢 [ 模塊 6：物理與機動系統 (✅ 修復卡跳蹲問題) ] --------------------------------
+-- [ 模塊 6：物理與機動系統 (修復卡跳蹲問題) ] --------------------------------
 _G.MyPhysicsLoop = RunService.Stepped:Connect(function()
     local char = LocalPlayer.Character
     local hrp = char and char:FindFirstChild("HumanoidRootPart")
@@ -519,7 +519,7 @@ _G.MyPhysicsLoop = RunService.Stepped:Connect(function()
     end
 end)
 
--- 🟢 [ 模塊 7：ESP 戰術透視系統 ] --------------------------------
+-- [ 模塊 7：ESP 戰術透視系統 ] --------------------------------
 local chamsFolder = Instance.new("Folder", workspace); chamsFolder.Name = "MyMobileESP"; _G.MyChamsFolder = chamsFolder
 _G.MyESPLoop = RunService.Heartbeat:Connect(function()
     pcall(function()
@@ -572,7 +572,7 @@ _G.MyESPLoop = RunService.Heartbeat:Connect(function()
     end)
 end)
 
--- 🟢 [ 模塊 8：熱鍵控制器 ] --------------------------------
+-- [ 模塊 8：熱鍵控制器 ] --------------------------------
 _G.MyActionBtns = UserInputService.InputBegan:Connect(function(input, gp)
     if gp then return end
     local k = input.KeyCode
