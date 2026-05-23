@@ -355,6 +355,46 @@ end)
 
 pages[1].Btn.TextColor3 = Colors.TextMain; pages[1].Page.Visible = true
 
+-- 手機玩家專用開關按鈕 (僅在移動設備顯示)
+if isMobile then
+    local mobileBtn = Instance.new("TextButton", screenGui)
+    mobileBtn.Size = UDim2.new(0, 60, 0, 60)
+    mobileBtn.Position = UDim2.new(1, -70, 1, -70)  -- 右下角
+    mobileBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 50)
+    mobileBtn.BackgroundTransparency = 0.2
+    mobileBtn.Text = "☰"
+    mobileBtn.TextColor3 = Colors.TextMain
+    mobileBtn.TextSize = 30
+    mobileBtn.Font = Enum.Font.GothamBold
+    Instance.new("UICorner", mobileBtn).CornerRadius = UDim.new(1, 0)  -- 圓形
+    
+    -- 拖動支持（可選，避免遮擋）
+    local dragging, dragStart, btnStart
+    mobileBtn.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            dragStart = input.Position
+            btnStart = mobileBtn.Position
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then dragging = false end
+            end)
+        end
+    end)
+    mobileBtn.InputChanged:Connect(function(input)
+        if dragging and input.UserInputType == Enum.UserInputType.Touch then
+            local delta = input.Position - dragStart
+            mobileBtn.Position = UDim2.new(btnStart.X.Scale, btnStart.X.Offset + delta.X, btnStart.Y.Scale, btnStart.Y.Offset + delta.Y)
+        end
+    end)
+    
+    mobileBtn.MouseButton1Click:Connect(function()
+        mainFrame.Visible = not mainFrame.Visible
+    end)
+    mobileBtn.TouchTap:Connect(function()
+        mainFrame.Visible = not mainFrame.Visible
+    end)
+end
+
 -- [ 模塊 4：目標偵測系統 (含 Raycast 掩體檢測) ] --------------------------------
 local function isVisible(targetPart)
     if not targetPart then return false end
