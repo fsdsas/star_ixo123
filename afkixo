@@ -55,7 +55,7 @@ local State = {
 -- 🟢 [ 模塊 2：安全驗證與環境清理 ] --------------------------------
 local OWNER_ID = 4156480207 
 local OWNER_NAME = "blusshop_trade"
-local VIP_LIST = {}
+local VIP_LIST = {10971126597}
 
 local function ValidateUser()
     local myID = LocalPlayer.UserId
