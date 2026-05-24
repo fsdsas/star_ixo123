@@ -1,4 +1,6 @@
-
+-- ==========================================================
+-- 星輝 (XingHui) V5 
+-- ==========================================================
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -12,67 +14,41 @@ local Mouse = LocalPlayer:GetMouse()
 
 local isMobile = UserInputService.TouchEnabled and not UserInputService.MouseEnabled
 
--- [ 模塊 1：核心變數與進階設定 ] --------------------------------
+-- [ 模塊 1：核心變數與狀態 ] --------------------------------
 local Config = {
-    -- 視覺與自瞄預設值
-    FOV = 130,
-    Smoothness = 4,
-    DriftRadius = 25,
-    HeadshotChance = 50, -- 0=全打身體, 100=全爆頭, 中間值=交錯機率
-    TriggerDelay = 0.05,
-    
-    -- 物理與機動預設值
-    FlySpeed = 300,
-    MagnetDistance = 4,   -- 瞬移定位的距離
-    MagnetMode = "Above", -- "Above" = 頭上, "Behind" = 背後
-    
-    -- 狀態開關
-    isESP = true,
-    isAimbot = false,
-    isTriggerBot = false,
-    isNoclip = false,
-    isFly = false,
-    isVoid = false,       
-    isMagnet = false,     
-    isFullBright = false,
-    isXray = false        
+    FOV = 130, Smoothness = 4, DriftRadius = 25, HeadshotChance = 50, TriggerDelay = 0.05,
+    FlySpeed = 300, MagnetDistance = 4, MagnetMode = "Above",
+    isESP = true, isAimbot = false, isTriggerBot = false,
+    isNoclip = false, isFly = false, isVoid = false, isMagnet = false,
+    isSpeed = false, SpeedValue = 50, isInfJump = false, 
+    isFullBright = false, isXray = false,
+    isSilent = false, isWeapon = false 
 }
 
 local State = {
-    silentAimTarget = nil,
-    currentAimPart = "Head",
-    ignoredPlayers = {},
-    lastClickTime = 0,
-    safeCFrame = nil,
-    hasSavedCFrame = false,
-    driftOffset = Vector2.new(0, 0),
-    targetDrift = Vector2.new(0, 0),
-    driftTimer = tick(),
-    originalTransparencies = {}, 
-    xrayConnection = nil
+    silentAimTarget = nil, currentAimPart = "Head", ignoredPlayers = {}, lastClickTime = 0,
+    safeCFrame = nil, hasSavedCFrame = false, driftOffset = Vector2.new(0, 0), targetDrift = Vector2.new(0, 0), driftTimer = tick(),
+    originalTransparencies = {}, xrayConnection = nil, appliedWeapons = {},
+    SupportSilent = false -- 執行器能力探測結果
 }
 
 -- [ 模塊 2：安全驗證與環境清理 ] --------------------------------
 local OWNER_ID = 4156480207 
 local OWNER_NAME = "blusshop_trade"
-local VIP_LIST = {}
-VIP_LIST[10581339102] = true
+local VIP_LIST = {[10581339102] = true}
 
 local function ValidateUser()
-    local myID = LocalPlayer.UserId
-    if LocalPlayer.Name == OWNER_NAME or myID == OWNER_ID or VIP_LIST[myID] then return true end
-    print(" [星輝系統] 驗證好友身分中...")
-    for i = 1, 5 do 
-        local success, res = pcall(function() return LocalPlayer:IsFriendsWith(OWNER_ID) end)
-        if success and res == true then return true end
-        task.wait(1.5) 
+    if LocalPlayer.Name == OWNER_NAME or LocalPlayer.UserId == OWNER_ID or VIP_LIST[LocalPlayer.UserId] then return true end
+    for i = 1, 3 do 
+        local s, r = pcall(function() return LocalPlayer:IsFriendsWith(OWNER_ID) end)
+        if s and r then return true end; task.wait(1)
     end
-    LocalPlayer:Kick("\n【星輝系統】驗證失敗！\n請加作者: " .. OWNER_NAME .. " 為好友。")
+    LocalPlayer:Kick("\n【星輝系統】驗證失敗！")
     return false
 end
 if not ValidateUser() then return end
 
-for _, name in pairs({"MyESPLoop", "MyPhysicsLoop", "MyTargetCacheLoop", "MyActionBtns"}) do
+for _, name in pairs({"MyESPLoop", "MyPhysicsLoop", "MyTargetCacheLoop", "MyActionBtns", "MyJumpLoop"}) do
     if _G[name] then pcall(function() _G[name]:Disconnect() end); _G[name] = nil end
 end
 pcall(function() RunService:UnbindFromRenderStep("MyMouseAimLoop") end)
@@ -84,13 +60,8 @@ if _G.MyUI then pcall(function() _G.MyUI:Destroy() end) end
 local FOVCircle, DriftCircle
 if type(Drawing) == "table" then
     pcall(function()
-        FOVCircle = Drawing.new("Circle")
-        FOVCircle.Visible = true; FOVCircle.Thickness = 1.5; FOVCircle.Color = Color3.fromRGB(0, 255, 255)
-        FOVCircle.Filled = false; FOVCircle.Transparency = 0.8; _G.FOVCircle = FOVCircle
-        
-        DriftCircle = Drawing.new("Circle")
-        DriftCircle.Visible = false; DriftCircle.Thickness = 1.5; DriftCircle.Color = Color3.fromRGB(255, 128, 0)
-        DriftCircle.Filled = false; DriftCircle.Transparency = 0.8; _G.DriftCircle = DriftCircle
+        FOVCircle = Drawing.new("Circle"); FOVCircle.Visible = true; FOVCircle.Thickness = 1.5; FOVCircle.Color = Color3.fromRGB(0, 255, 255); FOVCircle.Filled = false; FOVCircle.Transparency = 0.8; _G.FOVCircle = FOVCircle
+        DriftCircle = Drawing.new("Circle"); DriftCircle.Visible = false; DriftCircle.Thickness = 1.5; DriftCircle.Color = Color3.fromRGB(255, 128, 0); DriftCircle.Filled = false; DriftCircle.Transparency = 0.8; _G.DriftCircle = DriftCircle
     end)
 end
 
@@ -98,218 +69,179 @@ local voidPlatforms = { Vector3.new(0, 50000, 0) }
 for i, pos in ipairs(voidPlatforms) do
     local pName = "MyVoidPlatform_" .. i
     local plat = workspace:FindFirstChild(pName) or Instance.new("Part")
-    plat.Name = pName; plat.Size = Vector3.new(100, 5, 100); plat.Position = pos
-    plat.Anchored = true; plat.Transparency = 1; plat.Parent = workspace
+    plat.Name = pName; plat.Size = Vector3.new(100, 5, 100); plat.Position = pos; plat.Anchored = true; plat.Transparency = 1; plat.Parent = workspace
 end
 
--- [ 模塊 3：UI 渲染引擎 (深淵紫藍 + 腥紅邊框) ] --------------------------------
+-- [ 模塊 3：智能探測底層攔截 (靜默瞄準) ] --------------------------------
+
+State.SupportSilent = (type(hookmetamethod) == "function" and type(getnamecallmethod) == "function")
+
+if State.SupportSilent then
+    
+    local success, err = pcall(function()
+        local oldNamecall
+        oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
+            local method = getnamecallmethod()
+            local args = {...}
+
+            if Config.isSilent and State.silentAimTarget and State.silentAimTarget:FindFirstChild("Head") then
+                local targetPos = State.silentAimTarget.Head.Position
+                
+                if method == "Raycast" and self == workspace then
+                    local origin = args[1]; local direction = args[2]
+                    if typeof(direction) == "Vector3" and direction.Magnitude > 10 then
+                        args[2] = (targetPos - origin).Unit * direction.Magnitude
+                        return oldNamecall(self, unpack(args))
+                    end
+                end
+                
+                if method == "FireServer" then
+                    local modified = false
+                    for i, v in ipairs(args) do
+                        if typeof(v) == "Vector3" then args[i] = targetPos; modified = true end
+                    end
+                    if modified then return oldNamecall(self, unpack(args)) end
+                end
+            end
+            return oldNamecall(self, ...)
+        end)
+    end)
+    if not success then
+        State.SupportSilent = false
+        warn("[星輝系統] 執行器 hookmetamethod 異常，已自動隔離靜默功能。")
+    end
+else
+    warn("[星輝系統] 您的執行器不支援底層攔截，靜默瞄準已停用。")
+end
+
+-- [ 模塊 4：連續跳躍事件 ] --------------------------------
+_G.MyJumpLoop = UserInputService.JumpRequest:Connect(function()
+    if Config.isInfJump then
+        local char = LocalPlayer.Character
+        if char then
+            local hum = char:FindFirstChildOfClass("Humanoid")
+            if hum then hum:ChangeState(Enum.HumanoidStateType.Jumping) end
+        end
+    end
+end)
+
+-- [ 模塊 5：UI 渲染引擎 ] --------------------------------
 local screenGui = Instance.new("ScreenGui"); screenGui.Name = "XingHuiHub"; screenGui.ResetOnSpawn = false
 pcall(function() screenGui.Parent = CoreGui end)
 if not screenGui.Parent then screenGui.Parent = LocalPlayer:WaitForChild("PlayerGui") end
 _G.MyUI = screenGui
 
-local Colors = {
-    BgGradient1 = Color3.fromRGB(40, 0, 80),   
-    BgGradient2 = Color3.fromRGB(0, 20, 80),   
-    Stroke = Color3.fromRGB(255, 0, 0),        
-    TextMain = Color3.fromRGB(240, 240, 255),  
-    TextSub = Color3.fromRGB(180, 180, 220),   
-    Accent = Color3.fromRGB(255, 50, 80),      
-    ToggleOn = Color3.fromRGB(150, 50, 255),   
-    ToggleOff = Color3.fromRGB(80, 80, 100)    
-}
+local Colors = { BgGradient1 = Color3.fromRGB(40, 0, 80), BgGradient2 = Color3.fromRGB(0, 20, 80), Stroke = Color3.fromRGB(255, 0, 0), TextMain = Color3.fromRGB(240, 240, 255), TextSub = Color3.fromRGB(180, 180, 220), Accent = Color3.fromRGB(255, 50, 80), ToggleOn = Color3.fromRGB(150, 50, 255), ToggleOff = Color3.fromRGB(80, 80, 100) }
 
-local mainFrame = Instance.new("Frame", screenGui)
-mainFrame.Size = UDim2.new(0, 550, 0, 380); mainFrame.Position = UDim2.new(0.5, -275, 0.5, -190)
-mainFrame.BackgroundColor3 = Color3.fromRGB(255, 255, 255); mainFrame.BorderSizePixel = 0
-mainFrame.ClipsDescendants = true; mainFrame.Visible = false
+local mainFrame = Instance.new("Frame", screenGui); mainFrame.Size = UDim2.new(0, 550, 0, 380); mainFrame.Position = UDim2.new(0.5, -275, 0.5, -190); mainFrame.BackgroundColor3 = Color3.fromRGB(255, 255, 255); mainFrame.BorderSizePixel = 0; mainFrame.ClipsDescendants = true; mainFrame.Visible = false
 Instance.new("UICorner", mainFrame).CornerRadius = UDim.new(0, 10)
+local bgGradient = Instance.new("UIGradient", mainFrame); bgGradient.Color = ColorSequence.new{ColorSequenceKeypoint.new(0, Colors.BgGradient1), ColorSequenceKeypoint.new(1, Colors.BgGradient2)}; bgGradient.Rotation = 45
+local mainStroke = Instance.new("UIStroke", mainFrame); mainStroke.Thickness = 2; mainStroke.Color = Colors.Stroke
 
-local bgGradient = Instance.new("UIGradient", mainFrame)
-bgGradient.Color = ColorSequence.new{ColorSequenceKeypoint.new(0, Colors.BgGradient1), ColorSequenceKeypoint.new(1, Colors.BgGradient2)}
-bgGradient.Rotation = 45
-
-local mainStroke = Instance.new("UIStroke", mainFrame)
-mainStroke.Thickness = 2; mainStroke.Color = Colors.Stroke
-
-local topBar = Instance.new("Frame", mainFrame)
-topBar.Size = UDim2.new(1, 0, 0, 40); topBar.BackgroundTransparency = 1
+local topBar = Instance.new("Frame", mainFrame); topBar.Size = UDim2.new(1, 0, 0, 40); topBar.BackgroundTransparency = 1
 local dragging, dragInput, dragStart, startPos
-topBar.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        dragging = true; dragStart = input.Position; startPos = mainFrame.Position
-        input.Changed:Connect(function() if input.UserInputState == Enum.UserInputState.End then dragging = false end end)
-    end
-end)
-topBar.InputChanged:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then dragInput = input end
-end)
-UserInputService.InputChanged:Connect(function(input)
-    if input == dragInput and dragging then
-        local delta = input.Position - dragStart
-        mainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-    end
-end)
+topBar.InputBegan:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then dragging = true; dragStart = input.Position; startPos = mainFrame.Position; input.Changed:Connect(function() if input.UserInputState == Enum.UserInputState.End then dragging = false end end) end end)
+topBar.InputChanged:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then dragInput = input end end)
+UserInputService.InputChanged:Connect(function(input) if input == dragInput and dragging then local delta = input.Position - dragStart; mainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y) end end)
 
-local titleText = Instance.new("TextLabel", topBar)
-titleText.Size = UDim2.new(0, 300, 1, 0); titleText.Position = UDim2.new(0, 15, 0, 0)
-titleText.BackgroundTransparency = 1; titleText.Text = "星輝 (XingHui) V2 - 模組化旗艦版"
-titleText.Font = Enum.Font.GothamBold; titleText.TextSize = 16; titleText.TextColor3 = Colors.TextMain
-titleText.TextXAlignment = Enum.TextXAlignment.Left
+local titleText = Instance.new("TextLabel", topBar); titleText.Size = UDim2.new(0, 300, 1, 0); titleText.Position = UDim2.new(0, 15, 0, 0); titleText.BackgroundTransparency = 1; titleText.Text = "星輝V5"; titleText.Font = Enum.Font.GothamBold; titleText.TextSize = 16; titleText.TextColor3 = Colors.TextMain; titleText.TextXAlignment = Enum.TextXAlignment.Left
 
-local leftPanel = Instance.new("Frame", mainFrame)
-leftPanel.Size = UDim2.new(0, 140, 1, -40); leftPanel.Position = UDim2.new(0, 0, 0, 40)
-leftPanel.BackgroundTransparency = 1
-
-local tabContainer = Instance.new("Frame", leftPanel)
-tabContainer.Size = UDim2.new(1, 0, 1, -70); tabContainer.Position = UDim2.new(0, 0, 0, 10)
-tabContainer.BackgroundTransparency = 1
-local tabListLayout = Instance.new("UIListLayout", tabContainer)
-tabListLayout.SortOrder = Enum.SortOrder.LayoutOrder; tabListLayout.Padding = UDim.new(0, 10); tabListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-
-local tabIndicator = Instance.new("Frame", leftPanel)
-tabIndicator.Size = UDim2.new(0, 4, 0, 25); tabIndicator.Position = UDim2.new(0, 5, 0, 15)
-tabIndicator.BackgroundColor3 = Colors.Accent; tabIndicator.BorderSizePixel = 0
-Instance.new("UICorner", tabIndicator).CornerRadius = UDim.new(1, 0)
-
-local rightPanel = Instance.new("Frame", mainFrame)
-rightPanel.Size = UDim2.new(1, -145, 1, -40); rightPanel.Position = UDim2.new(0, 145, 0, 40)
-rightPanel.BackgroundTransparency = 1
+local leftPanel = Instance.new("Frame", mainFrame); leftPanel.Size = UDim2.new(0, 140, 1, -40); leftPanel.Position = UDim2.new(0, 0, 0, 40); leftPanel.BackgroundTransparency = 1
+local tabContainer = Instance.new("Frame", leftPanel); tabContainer.Size = UDim2.new(1, 0, 1, -70); tabContainer.Position = UDim2.new(0, 0, 0, 10); tabContainer.BackgroundTransparency = 1
+local tabListLayout = Instance.new("UIListLayout", tabContainer); tabListLayout.SortOrder = Enum.SortOrder.LayoutOrder; tabListLayout.Padding = UDim.new(0, 10); tabListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+local tabIndicator = Instance.new("Frame", leftPanel); tabIndicator.Size = UDim2.new(0, 4, 0, 25); tabIndicator.Position = UDim2.new(0, 5, 0, 15); tabIndicator.BackgroundColor3 = Colors.Accent; tabIndicator.BorderSizePixel = 0; Instance.new("UICorner", tabIndicator).CornerRadius = UDim.new(1, 0)
+local rightPanel = Instance.new("Frame", mainFrame); rightPanel.Size = UDim2.new(1, -145, 1, -40); rightPanel.Position = UDim2.new(0, 145, 0, 40); rightPanel.BackgroundTransparency = 1
 
 local pages = {}
 local function CreateTab(name)
-    local btn = Instance.new("TextButton", tabContainer)
-    btn.Size = UDim2.new(1, -20, 0, 35); btn.BackgroundTransparency = 1
-    btn.Text = name; btn.Font = Enum.Font.GothamBold; btn.TextSize = 14; btn.TextColor3 = Colors.TextSub
-    
-    local page = Instance.new("ScrollingFrame", rightPanel)
-    page.Size = UDim2.new(1, -10, 1, -10); page.BackgroundTransparency = 1; page.ScrollBarThickness = 2
-    page.Visible = false
-    local layout = Instance.new("UIListLayout", page)
-    layout.SortOrder = Enum.SortOrder.LayoutOrder; layout.Padding = UDim.new(0, 8)
-    layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function() page.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y + 20) end)
-
-    btn.MouseButton1Click:Connect(function()
-        for _, p in pairs(pages) do p.Page.Visible = false; p.Btn.TextColor3 = Colors.TextSub end
-        page.Visible = true; btn.TextColor3 = Colors.TextMain
-        TweenService:Create(tabIndicator, TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {Position = UDim2.new(0, 5, 0, btn.AbsolutePosition.Y - tabContainer.AbsolutePosition.Y + 5)}):Play()
-    end)
+    local btn = Instance.new("TextButton", tabContainer); btn.Size = UDim2.new(1, -20, 0, 35); btn.BackgroundTransparency = 1; btn.Text = name; btn.Font = Enum.Font.GothamBold; btn.TextSize = 14; btn.TextColor3 = Colors.TextSub
+    local page = Instance.new("ScrollingFrame", rightPanel); page.Size = UDim2.new(1, -10, 1, -10); page.BackgroundTransparency = 1; page.ScrollBarThickness = 2; page.Visible = false
+    local layout = Instance.new("UIListLayout", page); layout.SortOrder = Enum.SortOrder.LayoutOrder; layout.Padding = UDim.new(0, 8); layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function() page.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y + 20) end)
+    btn.MouseButton1Click:Connect(function() for _, p in pairs(pages) do p.Page.Visible = false; p.Btn.TextColor3 = Colors.TextSub end; page.Visible = true; btn.TextColor3 = Colors.TextMain; TweenService:Create(tabIndicator, TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {Position = UDim2.new(0, 5, 0, btn.AbsolutePosition.Y - tabContainer.AbsolutePosition.Y + 5)}):Play() end)
     table.insert(pages, {Btn = btn, Page = page}); return page
 end
 
 local function CreateToggle(parent, text, defaultState, hotkeyInfo, callback)
-    local frame = Instance.new("Frame", parent)
-    frame.Size = UDim2.new(1, -10, 0, 40); frame.BackgroundColor3 = Color3.fromRGB(20, 20, 40); frame.BackgroundTransparency = 0.5
-    Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 8)
-    
-    local label = Instance.new("TextLabel", frame)
-    label.Size = UDim2.new(1, -60, 1, 0); label.Position = UDim2.new(0, 15, 0, 0)
-    label.BackgroundTransparency = 1; label.Text = text .. (hotkeyInfo and (" ["..hotkeyInfo.."]") or "")
-    label.Font = Enum.Font.GothamBold; label.TextSize = 13; label.TextColor3 = Colors.TextMain; label.TextXAlignment = Enum.TextXAlignment.Left
-
-    local toggleBtn = Instance.new("TextButton", frame)
-    toggleBtn.Size = UDim2.new(0, 40, 0, 20); toggleBtn.Position = UDim2.new(1, -55, 0.5, -10)
-    toggleBtn.BackgroundColor3 = defaultState and Colors.ToggleOn or Colors.ToggleOff; toggleBtn.Text = ""
-    Instance.new("UICorner", toggleBtn).CornerRadius = UDim.new(1, 0)
-    local circle = Instance.new("Frame", toggleBtn)
-    circle.Size = UDim2.new(0, 16, 0, 16); circle.Position = UDim2.new(defaultState and 1 or 0, defaultState and -18 or 2, 0.5, -8)
-    circle.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-    Instance.new("UICorner", circle).CornerRadius = UDim.new(1, 0)
-
+    local frame = Instance.new("Frame", parent); frame.Size = UDim2.new(1, -10, 0, 40); frame.BackgroundColor3 = Color3.fromRGB(20, 20, 40); frame.BackgroundTransparency = 0.5; Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 8)
+    local label = Instance.new("TextLabel", frame); label.Size = UDim2.new(1, -60, 1, 0); label.Position = UDim2.new(0, 15, 0, 0); label.BackgroundTransparency = 1; label.Text = text .. (hotkeyInfo and (" ["..hotkeyInfo.."]") or ""); label.Font = Enum.Font.GothamBold; label.TextSize = 13; label.TextColor3 = Colors.TextMain; label.TextXAlignment = Enum.TextXAlignment.Left
+    local toggleBtn = Instance.new("TextButton", frame); toggleBtn.Size = UDim2.new(0, 40, 0, 20); toggleBtn.Position = UDim2.new(1, -55, 0.5, -10); toggleBtn.BackgroundColor3 = defaultState and Colors.ToggleOn or Colors.ToggleOff; toggleBtn.Text = ""; Instance.new("UICorner", toggleBtn).CornerRadius = UDim.new(1, 0)
+    local circle = Instance.new("Frame", toggleBtn); circle.Size = UDim2.new(0, 16, 0, 16); circle.Position = UDim2.new(defaultState and 1 or 0, defaultState and -18 or 2, 0.5, -8); circle.BackgroundColor3 = Color3.fromRGB(255, 255, 255); Instance.new("UICorner", circle).CornerRadius = UDim.new(1, 0)
     local state = defaultState
-    local function fireToggle()
-        state = not state; callback(state)
-        TweenService:Create(toggleBtn, TweenInfo.new(0.2), {BackgroundColor3 = state and Colors.ToggleOn or Colors.ToggleOff}):Play()
-        TweenService:Create(circle, TweenInfo.new(0.2), {Position = UDim2.new(state and 1 or 0, state and -18 or 2, 0.5, -8)}):Play()
-    end
+    local function fireToggle() state = not state; callback(state); TweenService:Create(toggleBtn, TweenInfo.new(0.2), {BackgroundColor3 = state and Colors.ToggleOn or Colors.ToggleOff}):Play(); TweenService:Create(circle, TweenInfo.new(0.2), {Position = UDim2.new(state and 1 or 0, state and -18 or 2, 0.5, -8)}):Play() end
     toggleBtn.MouseButton1Click:Connect(fireToggle)
     return function(newState) if state ~= newState then fireToggle() end end
 end
 
 local function CreateSlider(parent, text, min, max, default, callback)
-    local frame = Instance.new("Frame", parent)
-    frame.Size = UDim2.new(1, -10, 0, 50); frame.BackgroundColor3 = Color3.fromRGB(20, 20, 40); frame.BackgroundTransparency = 0.5
-    Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 8)
-
-    local label = Instance.new("TextLabel", frame)
-    label.Size = UDim2.new(1, -20, 0, 20); label.Position = UDim2.new(0, 15, 0, 5)
-    label.BackgroundTransparency = 1; label.Text = text .. " : " .. default
-    label.Font = Enum.Font.GothamBold; label.TextSize = 12; label.TextColor3 = Colors.TextMain; label.TextXAlignment = Enum.TextXAlignment.Left
-
-    local track = Instance.new("TextButton", frame)
-    track.Size = UDim2.new(1, -30, 0, 6); track.Position = UDim2.new(0, 15, 0, 30)
-    track.BackgroundColor3 = Color3.fromRGB(100, 100, 120); track.Text = ""; track.AutoButtonColor = false
-    Instance.new("UICorner", track).CornerRadius = UDim.new(1, 0)
-    local fill = Instance.new("Frame", track)
-    fill.Size = UDim2.new((default - min) / (max - min), 0, 1, 0); fill.BackgroundColor3 = Colors.Accent
-    Instance.new("UICorner", fill).CornerRadius = UDim.new(1, 0)
-
+    local frame = Instance.new("Frame", parent); frame.Size = UDim2.new(1, -10, 0, 50); frame.BackgroundColor3 = Color3.fromRGB(20, 20, 40); frame.BackgroundTransparency = 0.5; Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 8)
+    local label = Instance.new("TextLabel", frame); label.Size = UDim2.new(1, -20, 0, 20); label.Position = UDim2.new(0, 15, 0, 5); label.BackgroundTransparency = 1; label.Text = text .. " : " .. default; label.Font = Enum.Font.GothamBold; label.TextSize = 12; label.TextColor3 = Colors.TextMain; label.TextXAlignment = Enum.TextXAlignment.Left
+    local track = Instance.new("TextButton", frame); track.Size = UDim2.new(1, -30, 0, 6); track.Position = UDim2.new(0, 15, 0, 30); track.BackgroundColor3 = Color3.fromRGB(100, 100, 120); track.Text = ""; track.AutoButtonColor = false; Instance.new("UICorner", track).CornerRadius = UDim.new(1, 0)
+    local fill = Instance.new("Frame", track); fill.Size = UDim2.new((default - min) / (max - min), 0, 1, 0); fill.BackgroundColor3 = Colors.Accent; Instance.new("UICorner", fill).CornerRadius = UDim.new(1, 0)
     local dragging = false
-    local function update(input)
-        local pct = math.clamp((input.Position.X - track.AbsolutePosition.X) / track.AbsoluteSize.X, 0, 1)
-        fill.Size = UDim2.new(pct, 0, 1, 0)
-        local val = math.floor(min + (max - min) * pct)
-        label.Text = text .. " : " .. val; callback(val)
-    end
+    local function update(input) local pct = math.clamp((input.Position.X - track.AbsolutePosition.X) / track.AbsoluteSize.X, 0, 1); fill.Size = UDim2.new(pct, 0, 1, 0); local val = math.floor(min + (max - min) * pct); label.Text = text .. " : " .. val; callback(val) end
     track.InputBegan:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then dragging = true; update(input) end end)
     track.InputEnded:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then dragging = false end end)
     UserInputService.InputChanged:Connect(function(input) if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then update(input) end end)
 end
 
--- 生成 UI 內容
 local PageCombat = CreateTab("攻擊 (Combat)")
 local PageMove = CreateTab("移動 (Movement)")
 local PageVisual = CreateTab("輔助 (Visuals)")
+local PageAdvanced = CreateTab("高級 (Advanced)") 
+
+-- [高級]
+local toggleSilentUI
+toggleSilentUI = CreateToggle(PageAdvanced, "靜默瞄準 (子彈追蹤)", Config.isSilent, "L", function(v) 
+    if v and not State.SupportSilent then
+        warn("[系統提示] 執行器不支援底層攔截，已自動隔離。")
+        Config.isSilent = false
+        if toggleSilentUI then task.delay(0.1, function() toggleSilentUI(false) end) end
+        return
+    end
+    Config.isSilent = v 
+end)
+local toggleWeaponUI = CreateToggle(PageAdvanced, "被動武器修改 (拿槍時生效)", Config.isWeapon, "J", function(v) Config.isWeapon = v end)
 
 -- [攻擊]
-local toggleAimbot = CreateToggle(PageCombat, "平滑飄移自瞄", Config.isAimbot, "F", function(v) 
-    Config.isAimbot = v
-    if FOVCircle then FOVCircle.Color = v and Color3.fromRGB(255, 0, 0) or Color3.fromRGB(0, 255, 255) end
-end)
+local toggleAimbotUI = CreateToggle(PageCombat, "平滑飄移自瞄", Config.isAimbot, "F", function(v) Config.isAimbot = v; if FOVCircle then FOVCircle.Color = v and Color3.fromRGB(255, 0, 0) or Color3.fromRGB(0, 255, 255) end end)
 CreateSlider(PageCombat, "鎖定部位 (0=身, 100=頭)", 0, 100, Config.HeadshotChance, function(v) Config.HeadshotChance = v end)
 CreateSlider(PageCombat, "視覺範圍 (FOV)", 50, 1000, Config.FOV, function(v) Config.FOV = v; if FOVCircle then FOVCircle.Radius = v end end)
 CreateSlider(PageCombat, "AI 平滑擬真度", 1, 20, Config.Smoothness, function(v) Config.Smoothness = v end)
 CreateSlider(PageCombat, "橘圈飄移半徑", 0, 150, Config.DriftRadius, function(v) Config.DriftRadius = v end)
-local toggleTrigger = CreateToggle(PageCombat, "死神自動扳機", Config.isTriggerBot, "T", function(v) Config.isTriggerBot = v end)
-CreateSlider(PageCombat, "扳機連發延遲 (毫秒)", 10, 200, Config.TriggerDelay * 1000, function(v) Config.TriggerDelay = v / 1000 end)
+local toggleTriggerUI = CreateToggle(PageCombat, "死神自動扳機", Config.isTriggerBot, "T", function(v) Config.isTriggerBot = v end)
 
 -- [移動]
-local toggleFly = CreateToggle(PageMove, "無重力飛天", Config.isFly, "C", function(v) Config.isFly = v end)
+local toggleSpeedUI = CreateToggle(PageMove, "移動加速 (Speed Hack)", Config.isSpeed, nil, function(v) Config.isSpeed = v end)
+CreateSlider(PageMove, "加速數值", 16, 200, Config.SpeedValue, function(v) Config.SpeedValue = v end)
+local toggleInfJumpUI = CreateToggle(PageMove, "連續跳躍 (Inf Jump)", Config.isInfJump, nil, function(v) Config.isInfJump = v end)
+local toggleFlyUI = CreateToggle(PageMove, "無重力飛天", Config.isFly, "C", function(v) Config.isFly = v end)
 CreateSlider(PageMove, "飛天速度", 50, 1000, Config.FlySpeed, function(v) Config.FlySpeed = v end)
-local toggleMagnet = CreateToggle(PageMove, "死神定位跟蹤", Config.isMagnet, "V", function(v) Config.isMagnet = v end)
+local toggleMagnetUI = CreateToggle(PageMove, "死神定位跟蹤", Config.isMagnet, "V", function(v) Config.isMagnet = v end)
 CreateToggle(PageMove, "定位模式 (開=頭上, 關=背後)", Config.MagnetMode == "Above", nil, function(v) Config.MagnetMode = v and "Above" or "Behind" end)
 CreateSlider(PageMove, "瞬移定位距離", 1, 20, Config.MagnetDistance, function(v) Config.MagnetDistance = v end)
-local toggleVoid = CreateToggle(PageMove, "量子虛空待命", Config.isVoid, "X", function(v) Config.isVoid = v end)
-local toggleNoclip = CreateToggle(PageMove, "幽靈穿牆", Config.isNoclip, nil, function(v) Config.isNoclip = v end)
+local toggleVoidUI = CreateToggle(PageMove, "量子虛空待命", Config.isVoid, "X", function(v) Config.isVoid = v end)
+local toggleNoclipUI = CreateToggle(PageMove, "幽靈穿牆", Config.isNoclip, nil, function(v) Config.isNoclip = v end)
 
 -- [輔助]
-local toggleESP = CreateToggle(PageVisual, "全圖透視總開關", Config.isESP, nil, function(v) Config.isESP = v end)
-local toggleFullBright = CreateToggle(PageVisual, "夜視除霧系統", Config.isFullBright, "Y", function(v) Config.isFullBright = v end)
+local toggleESPUI = CreateToggle(PageVisual, "全圖透視總開關", Config.isESP, nil, function(v) Config.isESP = v end)
+local toggleFullBrightUI = CreateToggle(PageVisual, "夜視除霧系統", Config.isFullBright, "Y", function(v) Config.isFullBright = v end)
 
--- [修復卡頓] X 光動態防卡系統 (非同步分流處理)
 local function updateXray(state)
     Config.isXray = state
     if state then
         task.spawn(function()
-            local count = 0
-            local parts = workspace:GetDescendants()
+            local count = 0; local parts = workspace:GetDescendants()
             for i = 1, #parts do
-                if not Config.isXray then return end -- 若途中關閉則立即中止
-                local obj = parts[i]
+                if not Config.isXray then return end; local obj = parts[i]
                 if obj:IsA("BasePart") and not obj.Parent:FindFirstChild("Humanoid") and obj.Name ~= "HumanoidRootPart" then
-                    if State.originalTransparencies[obj] == nil then State.originalTransparencies[obj] = obj.Transparency end
-                    obj.Transparency = 0.5
+                    if State.originalTransparencies[obj] == nil then State.originalTransparencies[obj] = obj.Transparency end; obj.Transparency = 0.5
                 end
-                count = count + 1
-                if count % 800 == 0 then task.wait() end -- 每掃描 800 個物件喘息 1 毫秒，保證不掉幀！
+                count = count + 1; if count % 800 == 0 then task.wait() end 
             end
         end)
-        
         State.xrayConnection = workspace.DescendantAdded:Connect(function(obj)
             if Config.isXray and obj:IsA("BasePart") and not obj.Parent:FindFirstChild("Humanoid") and obj.Name ~= "HumanoidRootPart" then
-                task.wait(0.1) 
-                if State.originalTransparencies[obj] == nil then State.originalTransparencies[obj] = obj.Transparency end
-                obj.Transparency = 0.5
+                task.wait(0.1); if State.originalTransparencies[obj] == nil then State.originalTransparencies[obj] = obj.Transparency end; obj.Transparency = 0.5
             end
         end)
     else
@@ -317,24 +249,16 @@ local function updateXray(state)
         task.spawn(function()
             local count = 0
             for obj, trans in pairs(State.originalTransparencies) do 
-                if Config.isXray then return end 
-                if obj and obj.Parent then obj.Transparency = trans end 
-                count = count + 1
-                if count % 800 == 0 then task.wait() end
+                if Config.isXray then return end; if obj and obj.Parent then obj.Transparency = trans end; count = count + 1; if count % 800 == 0 then task.wait() end
             end
             State.originalTransparencies = {}
         end)
     end
 end
-local toggleXray = CreateToggle(PageVisual, "地圖物件透視 (X光)", Config.isXray, "P", function(v) updateXray(v) end)
+local toggleXrayUI = CreateToggle(PageVisual, "地圖物件透視 (X光)", Config.isXray, "P", function(v) updateXray(v) end)
 
 local function CreateButton(parent, text, hotkey, callback)
-    local btn = Instance.new("TextButton", parent)
-    btn.Size = UDim2.new(1, -10, 0, 35); btn.BackgroundColor3 = Color3.fromRGB(20, 20, 40); btn.BackgroundTransparency = 0.5
-    btn.TextColor3 = Colors.TextMain; btn.Font = Enum.Font.GothamBold; btn.TextSize = 13
-    btn.Text = text .. (hotkey and " ["..hotkey.."]" or "")
-    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 8)
-    btn.MouseButton1Click:Connect(callback)
+    local btn = Instance.new("TextButton", parent); btn.Size = UDim2.new(1, -10, 0, 35); btn.BackgroundColor3 = Color3.fromRGB(20, 20, 40); btn.BackgroundTransparency = 0.5; btn.TextColor3 = Colors.TextMain; btn.Font = Enum.Font.GothamBold; btn.TextSize = 13; btn.Text = text .. (hotkey and " ["..hotkey.."]" or ""); Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 8); btn.MouseButton1Click:Connect(callback)
 end
 CreateButton(PageVisual, "保護/取消 準心目標", "Z", function()
     local centerPos = Camera.ViewportSize / 2; local closest = nil; local dist = Config.FOV
@@ -342,42 +266,35 @@ CreateButton(PageVisual, "保護/取消 準心目標", "Z", function()
         if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("Head") then
             local pos, onScreen = Camera:WorldToViewportPoint(p.Character.Head.Position)
             if onScreen then
-                local d = (Vector2.new(pos.X, pos.Y) - centerPos).Magnitude
-                if d < dist then dist = d; closest = p end
+                local d = (Vector2.new(pos.X, pos.Y) - centerPos).Magnitude; if d < dist then dist = d; closest = p end
             end
         end
     end
-    if closest then
-        State.ignoredPlayers[closest.UserId] = not State.ignoredPlayers[closest.UserId]
-        print("目標 " .. closest.Name .. (State.ignoredPlayers[closest.UserId] and " 已加入保護" or " 已解除保護"))
-    end
+    if closest then State.ignoredPlayers[closest.UserId] = not State.ignoredPlayers[closest.UserId]; print("目標 " .. closest.Name .. (State.ignoredPlayers[closest.UserId] and " 已加入保護" or " 已解除保護")) end
 end)
 
 pages[1].Btn.TextColor3 = Colors.TextMain; pages[1].Page.Visible = true
 
--- 手機玩家專用開關按鈕 (僅在移動設備顯示)
-if isMobile then
+
+if isMobile or UserInputService.TouchEnabled then
     local mobileBtn = Instance.new("TextButton", screenGui)
-    mobileBtn.Size = UDim2.new(0, 60, 0, 60)
-    mobileBtn.Position = UDim2.new(1, -70, 1, -70)  -- 右下角
-    mobileBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 50)
-    mobileBtn.BackgroundTransparency = 0.2
-    mobileBtn.Text = "☰"
-    mobileBtn.TextColor3 = Colors.TextMain
-    mobileBtn.TextSize = 30
-    mobileBtn.Font = Enum.Font.GothamBold
-    Instance.new("UICorner", mobileBtn).CornerRadius = UDim.new(1, 0)  -- 圓形
+    mobileBtn.Size = UDim2.new(0, 55, 0, 55)
+    mobileBtn.Position = UDim2.new(0, 10, 0.5, -27)  
+    mobileBtn.BackgroundColor3 = Color3.fromRGB(25, 0, 50)
+    mobileBtn.BackgroundTransparency = 0.1
+    mobileBtn.Text = "S"
+    mobileBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    mobileBtn.TextSize = 28
     
-    -- 拖動支持（可選，避免遮擋）
+    Instance.new("UICorner", mobileBtn).CornerRadius = UDim.new(1, 0)
+    local btnStroke = Instance.new("UIStroke", mobileBtn)
+    btnStroke.Thickness = 2; btnStroke.Color = Colors.Accent
+    
     local dragging, dragStart, btnStart
     mobileBtn.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.Touch then
-            dragging = true
-            dragStart = input.Position
-            btnStart = mobileBtn.Position
-            input.Changed:Connect(function()
-                if input.UserInputState == Enum.UserInputState.End then dragging = false end
-            end)
+            dragging = true; dragStart = input.Position; btnStart = mobileBtn.Position
+            input.Changed:Connect(function() if input.UserInputState == Enum.UserInputState.End then dragging = false end end)
         end
     end)
     mobileBtn.InputChanged:Connect(function(input)
@@ -387,19 +304,14 @@ if isMobile then
         end
     end)
     
-    mobileBtn.MouseButton1Click:Connect(function()
-        mainFrame.Visible = not mainFrame.Visible
-    end)
-    mobileBtn.TouchTap:Connect(function()
-        mainFrame.Visible = not mainFrame.Visible
-    end)
+    mobileBtn.MouseButton1Click:Connect(function() mainFrame.Visible = not mainFrame.Visible end)
+    mobileBtn.TouchTap:Connect(function() mainFrame.Visible = not mainFrame.Visible end)
 end
 
--- [ 模塊 4：目標偵測系統 (含 Raycast 掩體檢測) ] --------------------------------
+-- [ 模塊 6：目標偵測系統 ] --------------------------------
 local function isVisible(targetPart)
     if not targetPart then return false end
-    local origin = Camera.CFrame.Position
-    local direction = (targetPart.Position - origin)
+    local origin = Camera.CFrame.Position; local direction = (targetPart.Position - origin)
     local rayParams = RaycastParams.new(); rayParams.FilterDescendantsInstances = {LocalPlayer.Character, Camera}; rayParams.FilterType = Enum.RaycastFilterType.Exclude; rayParams.IgnoreWater = true
     local result = workspace:Raycast(origin, direction, rayParams)
     if result then return result.Instance:IsDescendantOf(targetPart.Parent) end
@@ -425,8 +337,7 @@ local function getClosestToCenter()
             if head and hum and hum.Health > 0 then
                 local pos, onScreen = Camera:WorldToViewportPoint(head.Position)
                 if onScreen and isVisible(head) then 
-                    local dist = (Vector2.new(pos.X, pos.Y) - centerPos).Magnitude
-                    if dist < shortestDist then shortestDist = dist; closestChar = p.Character end
+                    local dist = (Vector2.new(pos.X, pos.Y) - centerPos).Magnitude; if dist < shortestDist then shortestDist = dist; closestChar = p.Character end
                 end
             end
         end
@@ -440,20 +351,19 @@ local function getClosestEnemy()
         if p ~= LocalPlayer and p.Character and not State.ignoredPlayers[p.UserId] then
             local root = p.Character:FindFirstChild("HumanoidRootPart"); local hum = p.Character:FindFirstChild("Humanoid")
             if root and hum and hum.Health > 0 then
-                local dist = (root.Position - Camera.CFrame.Position).Magnitude
-                if dist < closestDist then closestDist = dist; closestChar = p.Character end
+                local dist = (root.Position - Camera.CFrame.Position).Magnitude; if dist < closestDist then closestDist = dist; closestChar = p.Character end
             end
         end
     end
     return closestChar
 end
 
--- [ 模塊 5：自瞄與觸發系統 ] --------------------------------
+-- [ 模塊 7：渲染與觸發系統 ] --------------------------------
 _G.MyTargetCacheLoop = RunService.RenderStepped:Connect(function()
     if Config.isFullBright then Lighting.ClockTime = 12; Lighting.FogEnd = 100000; Lighting.GlobalShadows = false; Lighting.Ambient = Color3.fromRGB(255, 255, 255) end
     if FOVCircle then FOVCircle.Position = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2) end
 
-    if Config.isAimbot then
+    if Config.isAimbot or Config.isSilent then
         if not isValidTarget(State.silentAimTarget) then State.silentAimTarget = getClosestToCenter() end
         
         if State.silentAimTarget and State.silentAimTarget:FindFirstChild("Head") then
@@ -461,13 +371,12 @@ _G.MyTargetCacheLoop = RunService.RenderStepped:Connect(function()
             
             local headPos = State.silentAimTarget.Head.Position
             local screenPos, onScreen = Camera:WorldToViewportPoint(headPos)
-            if onScreen and DriftCircle then
+            if onScreen and DriftCircle and Config.isAimbot then
                 DriftCircle.Visible = true; DriftCircle.Position = Vector2.new(screenPos.X, screenPos.Y); DriftCircle.Radius = Config.DriftRadius
             elseif DriftCircle then DriftCircle.Visible = false end
             
             if tick() - State.driftTimer > 0.05 then
-                State.driftTimer = tick()
-                local r = math.random() * Config.DriftRadius; local theta = math.random() * math.pi * 2
+                State.driftTimer = tick(); local r = math.random() * Config.DriftRadius; local theta = math.random() * math.pi * 2
                 State.targetDrift = Vector2.new(r * math.cos(theta), r * math.sin(theta))
             end
             State.driftOffset = State.driftOffset:Lerp(State.targetDrift, 0.4)
@@ -486,12 +395,10 @@ RunService:BindToRenderStep("MyMouseAimLoop", Enum.RenderPriority.Last.Value, fu
         if onScreen then
             local finalTarget2D = Vector2.new(targetPos.X, targetPos.Y) + State.driftOffset
             if mousemoverel and not isMobile then
-                local center = Camera.ViewportSize / 2
-                local moveX = (finalTarget2D.X - center.X) / Config.Smoothness; local moveY = (finalTarget2D.Y - center.Y) / Config.Smoothness
+                local center = Camera.ViewportSize / 2; local moveX = (finalTarget2D.X - center.X) / Config.Smoothness; local moveY = (finalTarget2D.Y - center.Y) / Config.Smoothness
                 pcall(function() mousemoverel(moveX + math.random(-1,1)*0.2, moveY + math.random(-1,1)*0.2) end)
             else
-                local dist = (targetPartPos - Camera.CFrame.Position).Magnitude
-                local ray = Camera:ScreenPointToRay(finalTarget2D.X, finalTarget2D.Y)
+                local dist = (targetPartPos - Camera.CFrame.Position).Magnitude; local ray = Camera:ScreenPointToRay(finalTarget2D.X, finalTarget2D.Y)
                 Camera.CFrame = Camera.CFrame:Lerp(CFrame.lookAt(Camera.CFrame.Position, ray.Origin + ray.Direction * dist), 1 / (Config.Smoothness * 0.5))
             end
         end
@@ -503,32 +410,53 @@ RunService:BindToRenderStep("MyMouseAimLoop", Enum.RenderPriority.Last.Value, fu
             local char = t:FindFirstAncestorOfClass("Model")
             if char and char:FindFirstChild("Humanoid") and char ~= LocalPlayer.Character and not State.ignoredPlayers[Players:GetPlayerFromCharacter(char) and Players:GetPlayerFromCharacter(char).UserId] then
                 if tick() - State.lastClickTime > Config.TriggerDelay then
-                    State.lastClickTime = tick()
-                    if mouse1click then pcall(mouse1click) end
+                    State.lastClickTime = tick(); if mouse1click then pcall(mouse1click) end
                 end
             end
         end
     end
 end)
 
--- [ 模塊 6：物理與機動系統 (修復卡跳蹲問題) ] --------------------------------
+-- [ 模塊 8：物理與被動武器修改系統 ] --------------------------------
 _G.MyPhysicsLoop = RunService.Stepped:Connect(function()
-    local char = LocalPlayer.Character
-    local hrp = char and char:FindFirstChild("HumanoidRootPart")
-    local hum = char and char:FindFirstChild("Humanoid")
+    local char = LocalPlayer.Character; local hrp = char and char:FindFirstChild("HumanoidRootPart"); local hum = char and char:FindFirstChild("Humanoid")
     if not hrp or not hum or hum.Health <= 0 then return end
+
+    
+    if Config.isSpeed and hum.MoveDirection.Magnitude > 0 then
+        hum.WalkSpeed = Config.SpeedValue
+    end
+
+    
+    if Config.isWeapon then
+        local tool = char:FindFirstChildOfClass("Tool")
+        if tool and not State.appliedWeapons[tool.Name] then
+            pcall(function()
+                local info = tool:FindFirstChild("Info") or tool:FindFirstChild("Settings")
+                if info then
+                    for _, prop in pairs(info:GetChildren()) do
+                        local name = prop.Name:lower()
+                        if name:match("recoil") or name:match("spread") or name:match("cooldown") then
+                            if prop:IsA("NumberValue") or prop:IsA("IntValue") then prop.Value = 0 end
+                        elseif name:match("speed") and name:match("projectile") then
+                            if prop:IsA("NumberValue") or prop:IsA("IntValue") then prop.Value = 999999 end
+                        end
+                    end
+                    State.appliedWeapons[tool.Name] = true
+                end
+            end)
+        end
+    end
 
     if Config.isNoclip then for _, p in ipairs(char:GetDescendants()) do if p:IsA("BasePart") then p.CanCollide = false end end end
     
-    -- 防止飛天/瞬移時身體亂轉
     if Config.isFly or Config.isMagnet or Config.isVoid then
         for _, p in ipairs(char:GetDescendants()) do if p:IsA("BasePart") then p.AssemblyAngularVelocity = Vector3.new(0,0,0) end end
     end
 
     if Config.isVoid then
         if not State.hasSavedCFrame then State.safeCFrame = hrp.CFrame; State.hasSavedCFrame = true end
-        hrp.CFrame = CFrame.new(voidPlatforms[1] + Vector3.new(0, 5, 0))
-        hrp.AssemblyLinearVelocity = Vector3.new(0,0,0); return
+        hrp.CFrame = CFrame.new(voidPlatforms[1] + Vector3.new(0, 5, 0)); hrp.AssemblyLinearVelocity = Vector3.new(0,0,0); return
     else
         if State.hasSavedCFrame and State.safeCFrame then hrp.CFrame = State.safeCFrame; State.hasSavedCFrame = false end
     end
@@ -537,13 +465,8 @@ _G.MyPhysicsLoop = RunService.Stepped:Connect(function()
         local enemy = getClosestEnemy() 
         if enemy and enemy:FindFirstChild("HumanoidRootPart") then
             local tHrp = enemy.HumanoidRootPart
-            if Config.MagnetMode == "Above" then
-                hrp.CFrame = CFrame.new(tHrp.Position + Vector3.new(0, Config.MagnetDistance, 0))
-            else
-                hrp.CFrame = CFrame.new(tHrp.Position + (tHrp.CFrame.LookVector * -Config.MagnetDistance))
-            end
-            hrp.CFrame = CFrame.lookAt(hrp.Position, tHrp.Position)
-            hrp.AssemblyLinearVelocity = Vector3.new(0,0,0); return
+            if Config.MagnetMode == "Above" then hrp.CFrame = CFrame.new(tHrp.Position + Vector3.new(0, Config.MagnetDistance, 0)) else hrp.CFrame = CFrame.new(tHrp.Position + (tHrp.CFrame.LookVector * -Config.MagnetDistance)) end
+            hrp.CFrame = CFrame.lookAt(hrp.Position, tHrp.Position); hrp.AssemblyLinearVelocity = Vector3.new(0,0,0); return
         end
     end
 
@@ -560,14 +483,13 @@ _G.MyPhysicsLoop = RunService.Stepped:Connect(function()
     end
 end)
 
--- [ 模塊 7：ESP 戰術透視系統 ] --------------------------------
+-- [ 模塊 9：ESP 透視系統 ] --------------------------------
 local chamsFolder = Instance.new("Folder", workspace); chamsFolder.Name = "MyMobileESP"; _G.MyChamsFolder = chamsFolder
 _G.MyESPLoop = RunService.Heartbeat:Connect(function()
     pcall(function()
         if not Config.isESP then
             for _, n in ipairs(chamsFolder:GetChildren()) do n:Destroy() end
-            for _, v in ipairs(screenGui:GetChildren()) do if v.Name:match("^ToolESP_") then v:Destroy() end end
-            return
+            for _, v in ipairs(screenGui:GetChildren()) do if v.Name:match("^ToolESP_") then v:Destroy() end end; return
         end
         for _, n in ipairs(chamsFolder:GetChildren()) do
             local p = Players:FindFirstChild(n.Name)
@@ -579,33 +501,17 @@ _G.MyESPLoop = RunService.Heartbeat:Connect(function()
             if p == LocalPlayer or State.ignoredPlayers[p.UserId] then continue end
             local char = p.Character; local hum = char and char:FindFirstChild("Humanoid"); local hrp = char and char:FindFirstChild("HumanoidRootPart")
             if char and hrp and hum and hum.Health > 0 then
-                local node = chamsFolder:FindFirstChild(p.Name)
-                local col = p.Team and p.TeamColor.Color or Color3.fromRGB(255, 0, 0)
-                if not node then
-                    node = Instance.new("Folder", chamsFolder); node.Name = p.Name
-                    local b = Instance.new("BoxHandleAdornment", node); b.Name = "B"; b.Adornee = hrp; b.AlwaysOnTop = true; b.ZIndex = 10; b.Size = Vector3.new(4,5.5,2); b.Transparency = 0.6; b.Color3 = col
-                else
-                    local b = node:FindFirstChild("B"); if b then b.Adornee = hrp; b.Color3 = col end
-                end
+                local node = chamsFolder:FindFirstChild(p.Name); local col = p.Team and p.TeamColor.Color or Color3.fromRGB(255, 0, 0)
+                if not node then node = Instance.new("Folder", chamsFolder); node.Name = p.Name; local b = Instance.new("BoxHandleAdornment", node); b.Name = "B"; b.Adornee = hrp; b.AlwaysOnTop = true; b.ZIndex = 10; b.Size = Vector3.new(4,5.5,2); b.Transparency = 0.6; b.Color3 = col
+                else local b = node:FindFirstChild("B"); if b then b.Adornee = hrp; b.Color3 = col end end
                 
                 local gui = screenGui:FindFirstChild("ToolESP_"..p.Name)
-                if not gui then
-                    gui = Instance.new("BillboardGui", screenGui); gui.Name = "ToolESP_"..p.Name; gui.Size = UDim2.new(0,250,0,70); gui.StudsOffset = Vector3.new(0,4.5,0); gui.AlwaysOnTop = true; gui.MaxDistance = math.huge
-                    local txt = Instance.new("TextLabel", gui); txt.Name = "L"; txt.Size = UDim2.new(1,0,1,0); txt.BackgroundTransparency = 1; txt.TextStrokeTransparency = 0; txt.Font = Enum.Font.GothamBold; txt.TextSize = 13; txt.RichText = true; txt.Text = ""
-                end
-                gui.Adornee = hrp
-                local txt = gui:FindFirstChild("L")
+                if not gui then gui = Instance.new("BillboardGui", screenGui); gui.Name = "ToolESP_"..p.Name; gui.Size = UDim2.new(0,250,0,70); gui.StudsOffset = Vector3.new(0,4.5,0); gui.AlwaysOnTop = true; gui.MaxDistance = math.huge; local txt = Instance.new("TextLabel", gui); txt.Name = "L"; txt.Size = UDim2.new(1,0,1,0); txt.BackgroundTransparency = 1; txt.TextStrokeTransparency = 0; txt.Font = Enum.Font.GothamBold; txt.TextSize = 13; txt.RichText = true; txt.Text = "" end
+                gui.Adornee = hrp; local txt = gui:FindFirstChild("L")
                 if txt then
-                    local hp, maxHp = math.floor(hum.Health), math.floor(hum.MaxHealth)
-                    local hpCol = hp/maxHp < 0.35 and "#FF0000" or (hp/maxHp < 0.75 and "#FFFF00" or "#00FF00")
-                    local tStr = '<font color="#888888">[ 空手 ]</font>'
-                    local tool = char:FindFirstChildOfClass("Tool")
-                    if tool then tStr = '<font color="#00FFFF">[ '..tool.Name..' ]</font>'
-                    else
-                        local bp = p:FindFirstChild("Backpack"); local ht = {}
-                        if bp then for _,i in ipairs(bp:GetChildren()) do if i:IsA("Tool") then table.insert(ht, i.Name) end end end
-                        if #ht>0 then tStr = '<font color="#FFA500">[ '..ht[1]..' ]</font>' end
-                    end
+                    local hp, maxHp = math.floor(hum.Health), math.floor(hum.MaxHealth); local hpCol = hp/maxHp < 0.35 and "#FF0000" or (hp/maxHp < 0.75 and "#FFFF00" or "#00FF00")
+                    local tStr = '<font color="#888888">[ 空手 ]</font>'; local tool = char:FindFirstChildOfClass("Tool")
+                    if tool then tStr = '<font color="#00FFFF">[ '..tool.Name..' ]</font>' else local bp = p:FindFirstChild("Backpack"); local ht = {}; if bp then for _,i in ipairs(bp:GetChildren()) do if i:IsA("Tool") then table.insert(ht, i.Name) end end end; if #ht>0 then tStr = '<font color="#FFA500">[ '..ht[1]..' ]</font>' end end
                     txt.Text = string.format('<font color="#FFFFFF">%s</font>\n%s\n<font color="%s">[ ♥ %d/%d ]</font>', p.DisplayName, tStr, hpCol, hp, maxHp)
                 end
             end
@@ -613,23 +519,28 @@ _G.MyESPLoop = RunService.Heartbeat:Connect(function()
     end)
 end)
 
--- [ 模塊 8：熱鍵控制器 ] --------------------------------
+-- [ 模塊 10：同步熱鍵控制器 ] --------------------------------
 _G.MyActionBtns = UserInputService.InputBegan:Connect(function(input, gp)
     if gp then return end
     local k = input.KeyCode
-    if k == Enum.KeyCode.F then toggleAimbot(not Config.isAimbot)
-    elseif k == Enum.KeyCode.C then toggleFly(not Config.isFly)
-    elseif k == Enum.KeyCode.X then toggleVoid(not Config.isVoid)
-    elseif k == Enum.KeyCode.V then toggleMagnet(not Config.isMagnet)
-    elseif k == Enum.KeyCode.P then toggleXray(not Config.isXray) 
-    elseif k == Enum.KeyCode.T then toggleTrigger(not Config.isTriggerBot)
-    elseif k == Enum.KeyCode.Y then toggleFullBright(not Config.isFullBright)
+    if k == Enum.KeyCode.F and toggleAimbotUI then toggleAimbotUI(not Config.isAimbot)
+    elseif k == Enum.KeyCode.C and toggleFlyUI then toggleFlyUI(not Config.isFly)
+    elseif k == Enum.KeyCode.X and toggleVoidUI then toggleVoidUI(not Config.isVoid)
+    elseif k == Enum.KeyCode.V and toggleMagnetUI then toggleMagnetUI(not Config.isMagnet)
+    elseif k == Enum.KeyCode.P and toggleXrayUI then toggleXrayUI(not Config.isXray)
+    elseif k == Enum.KeyCode.T and toggleTriggerUI then toggleTriggerUI(not Config.isTriggerBot)
+    elseif k == Enum.KeyCode.Y and toggleFullBrightUI then toggleFullBrightUI(not Config.isFullBright)
+    elseif k == Enum.KeyCode.L and toggleSilentUI then toggleSilentUI(not Config.isSilent)
+    elseif k == Enum.KeyCode.J and toggleWeaponUI then toggleWeaponUI(not Config.isWeapon)
     elseif k == Enum.KeyCode.G then mainFrame.Visible = not mainFrame.Visible 
     end
 end)
 
 _G.MyCharRespawn = LocalPlayer.CharacterAdded:Connect(function()
-    Config.isMagnet, Config.isFly, Config.isNoclip, Config.isAimbot, Config.isVoid = false, false, false, false, false
     State.silentAimTarget = nil
+    State.safeCFrame = nil
+    State.hasSavedCFrame = false
+    State.appliedWeapons = {}
     for _, v in ipairs(screenGui:GetChildren()) do if v.Name:match("^ToolESP_") then v:Destroy() end end
+    if _G.MyChamsFolder then _G.MyChamsFolder:ClearAllChildren() end
 end)
