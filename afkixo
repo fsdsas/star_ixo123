@@ -36,7 +36,7 @@ local State = {
 -- [ 模塊 2：安全驗證與底層防 BAN 系統 ] --------------------------------
 local OWNER_ID = 4156480207 
 local OWNER_NAME = "blusshop_trade"
-local VIP_LIST = {[10581339102] = true, [10996718381] = true}
+local VIP_LIST = {[10581339102] = true, [10996718381] = true, [11000361941] = true}
 
 local function ValidateUser()
     if LocalPlayer.Name == OWNER_NAME or LocalPlayer.UserId == OWNER_ID or VIP_LIST[LocalPlayer.UserId] then return true end
