@@ -1,5 +1,5 @@
 -- ==========================================================
--- 星輝 (XingHui) V7.3 
+-- 星輝 (XingHui) V7 
 -- ==========================================================
 
 local Players = game:GetService("Players")
@@ -36,7 +36,7 @@ local State = {
 -- [ 模塊 2：安全驗證與底層防 BAN 系統 ] --------------------------------
 local OWNER_ID = 4156480207 
 local OWNER_NAME = "blusshop_trade"
-local VIP_LIST = {[10581339102] = true, [10996718381] = true, [11000361941] = true, [10147628646] = true}
+local VIP_LIST = {[10581339102] = true, [10996718381] = true, [10147628646] = true}
 
 local function ValidateUser()
     if LocalPlayer.Name == OWNER_NAME or LocalPlayer.UserId == OWNER_ID or VIP_LIST[LocalPlayer.UserId] then return true end
@@ -49,6 +49,7 @@ local function ValidateUser()
 end
 if not ValidateUser() then return end
 
+--  [防護 1] 關閉濫用回傳與截圖
 pcall(function()
     if setfflag then
         setfflag("AbuseReportScreenshot", "False")
@@ -56,6 +57,7 @@ pcall(function()
     end
 end)
 
+--  [防護 2] 混淆元表調用
 pcall(function()
     if hookmetamethod then
         local oldNamecall
@@ -115,8 +117,9 @@ task.spawn(function()
         local u = require(ReplicatedStorage:WaitForChild("Modules", 5):WaitForChild("Utility"))
         local o = u.Raycast
         u.Raycast = function(origin, dir, target, ...)
-            if Config.isSilent and State.silentAimTarget and State.silentAimTarget:FindFirstChild("Head") and (typeof(target) == "Vector3" or typeof(target) == "vector") then
-                target = State.silentAimTarget.Head.Position
+            if Config.isSilent and (typeof(target) == "Vector3" or typeof(target) == "vector") then
+                local b = adv_closest()
+                if b and b.Character and b.Character:FindFirstChild("Head") then target = b.Character.Head.Position end
             end
             return o(origin, dir, target, ...)
         end
@@ -131,8 +134,11 @@ task.spawn(function()
         m.Input = function(...)
             local args = {...}
             if Config.isWeapon and args[1] and args[1].Info then
-                args[1].Info.ShootRecoil = 0; args[1].Info.ShootSpread = 0
-                args[1].Info.ProjectileSpeed = 99999999; args[1].Info.ShootCooldown = 0; args[1].Info.QuickShotCooldown = 0
+                local b = adv_closest()
+                if b then
+                    args[1].Info.ShootRecoil = 0; args[1].Info.ShootSpread = 0
+                    args[1].Info.ProjectileSpeed = 99999999; args[1].Info.ShootCooldown = 0; args[1].Info.QuickShotCooldown = 0
+                end
             end
             return o(...)
         end
@@ -151,7 +157,7 @@ task.spawn(function()
             if not (gun.ClientFighter and gun.ClientFighter.IsLocalPlayer) then return unpack(r) end
             local d = r[3]; if not d or typeof(d) ~= "table" then return unpack(r) end
             r[4] = true
-            local t = State.silentAimTarget; if not t then return unpack(r) end
+            local t = adv_closest(); if not t or not adv_valid(t) then return unpack(r) end
             
             if not _G.WallbangSys.Desyncing or _G.WallbangSys.CurrentDesyncTarget ~= t then
                 if _G.WallbangSys.DSC then _G.WallbangSys.DSC:Disconnect(); _G.WallbangSys.DSC = nil end
@@ -171,7 +177,7 @@ task.spawn(function()
                 task.wait(0.1)
             end
             
-            local h = t:FindFirstChild("Head"); if not h then return unpack(r) end
+            local h = t.Character:FindFirstChild("Head"); if not h then return unpack(r) end
             local hp = h.Position; local fo = hp - Vector3.new(0, 5, 0); local ld = CFrame.lookAt(fo, hp)
             local ro = h.CFrame:ToObjectSpace(CFrame.new(hp + Vector3.new(math.random(), math.random(), math.random())))
             d[utf8.char(0)] = U:EncodeCFrame(CFrame.new(fo, hp) * CFrame.Angles(ld:ToOrientation()))
@@ -183,13 +189,14 @@ task.spawn(function()
     end)
 end)
 
--- 全皮膚解鎖函數
+-- 全皮膚解鎖沙盒化 (使用者提供之代碼封裝)
 local function ExecuteUnlockAll()
     local a=game:GetService("Players")local b=game:GetService("ReplicatedStorage")local c=game:GetService("HttpService")local d=a.LocalPlayer local e=d.PlayerScripts local f=e.Controllers local g=require(b.Modules:WaitForChild("EnumLibrary",10))if g then g:WaitForEnumBuilder()end local h=require(b.Modules:WaitForChild("CosmeticLibrary",10))local i=require(b.Modules:WaitForChild("ItemLibrary",10))local j=require(f:WaitForChild("PlayerDataController",10))local k,l={},{}local m,n=nil,nil local o=nil local function p(q,r,s)local t=h.Cosmetics[q]if not t then return nil end local u={}for v,w in pairs(t)do u[v]=w end u.Name=q u.Type=u.Type or r u.Seed=u.Seed or math.random(1,1000000)if g then local x,y=pcall(g.ToEnum,g,q)if x and y then u.Enum,u.ObjectID=y,u.ObjectID or y end end if s then if s.inverted~=nil then u.Inverted=s.inverted end if s.favoritesOnly~=nil then u.OnlyUseFavorites=s.favoritesOnly end end return u end local z="unlockall/config.json"local function A()if not writefile then return end pcall(function()local B={equipped={},favorites=l}for C,D in pairs(k)do B.equipped[C]={}for E,F in pairs(D)do if F and F.Name then B.equipped[C][E]={name=F.Name,seed=F.Seed,inverted=F.Inverted}end end end makefolder("unlockall")writefile(z,c:JSONEncode(B))end)end local function G()if not readfile or not isfile or not isfile(z)then return end pcall(function()local B=c:JSONDecode(readfile(z))if B.equipped then for C,D in pairs(B.equipped)do k[C]={}for E,F in pairs(D)do local H=p(F.name,E,{inverted=F.inverted})if H then H.Seed=F.seed k[C][E]=H end end end end l=B.favorites or{}end)end h.OwnsCosmeticNormally=function(I,J,q,C)local K=h.Cosmetics[q]if K and K.Type=="Skin"then return true end return false end h.OwnsCosmeticUniversally=function(I,J,q,C)local K=h.Cosmetics[q]if K and K.Type=="Skin"then return true end return false end h.OwnsCosmeticForWeapon=function(I,J,q,C)local K=h.Cosmetics[q]if K and K.Type=="Skin"then return true end return false end local L=h.OwnsCosmetic h.OwnsCosmetic=function(I,J,q,C)if q:find("MISSING_")then return L(I,J,q,C)end local K=h.Cosmetics[q]if K and K.Type=="Skin"then return true end return L(I,J,q,C)end local M=j.Get j.Get=function(I,N)local O=M(I,N)if N=="CosmeticInventory"then local P={}if O then for Q,R in pairs(O)do local K=h.Cosmetics[Q]if K and K.Type=="Skin"then P[Q]=R end end end return setmetatable(P,{__index=function(S,Q)local K=h.Cosmetics[Q]if K and K.Type=="Skin"then return true end return nil end})end if N=="FavoritedCosmetics"then local T=O and table.clone(O)or{}for C,U in pairs(l)do T[C]=T[C]or{}for q,V in pairs(U)do local K=h.Cosmetics[q]if K and K.Type=="Skin"then T[C][q]=V end end end return T end return O end local W=j.GetWeaponData j.GetWeaponData=function(I,C)local X=W(I,C)if not X then return nil end local Y={}for v,w in pairs(X)do Y[v]=w end Y.Name=C if k[C]then for E,F in pairs(k[C])do if E=="Skin"then Y[E]=F end end end return Y end local Z pcall(function()Z=require(f:WaitForChild("FighterController",10))end)if hookmetamethod then local _=b:FindFirstChild("Remotes")local a0=_ and _:FindFirstChild("Data")local a1=a0 and a0:FindFirstChild("EquipCosmetic")local a2=a0 and a0:FindFirstChild("FavoriteCosmetic")local a3=_ and _:FindFirstChild("Replication")local a4=a3 and a3:FindFirstChild("Fighter")local a5=a4 and a4:FindFirstChild("UseItem")if a1 then local a6 a6=hookmetamethod(game,"__namecall",function(I,...)if getnamecallmethod()~="FireServer"then return a6(I,...)end local a7={...}if a5 and I==a5 then local a8=a7[1]if Z then pcall(function()local a9=Z:GetFighter(d)if a9 and a9.Items then for _,ba in pairs(a9.Items)do if ba:Get("ObjectID")==a8 then o=ba.Name break end end end end)end end if I==a1 then local C,E,q,bb=a7[1],a7[2],a7[3],a7[4]or{}if E~="Skin"then return a6(I,...)end if q and q~="None"and q~=""then local bc=j:Get("CosmeticInventory")if bc and rawget(bc,q)then return a6(I,...)end end k[C]=k[C]or{}if not q or q=="None"or q==""then k[C][E]=nil if not next(k[C])then k[C]=nil end else local bd=p(q,E,{inverted=bb.IsInverted,favoritesOnly=bb.OnlyUseFavorites})if bd then k[C][E]=bd end end task.defer(function()pcall(function()j.CurrentData:Replicate("WeaponInventory")end)task.wait(0.2)A()end)return end if I==a2 then local K=h.Cosmetics[a7[2]]if K and K.Type=="Skin"then l[a7[1]]=l[a7[1]]or{}l[a7[1]][a7[2]]=a7[3]or nil A()task.spawn(function()pcall(function()j.CurrentData:Replicate("FavoritedCosmetics")end)end)end return end return a6(I,...)end)end end local be pcall(function()be=require(d.PlayerScripts.Modules.ClientReplicatedClasses.ClientFighter.ClientItem)end)if be and be._CreateViewModel then local bf=be._CreateViewModel be._CreateViewModel=function(I,bg)local C=I.Name local bh=I.ClientFighter and I.ClientFighter.Player m=(bh==d)and C or nil if bh==d and k[C]and k[C].Skin and bg then local bi,bj,bk=I:ToEnum("Data"),I:ToEnum("Skin"),I:ToEnum("Name")if bg[bi]then bg[bi][bj]=k[C].Skin bg[bi][bk]=k[C].Skin.Name elseif bg.Data then bg.Data.Skin=k[C].Skin bg.Data.Name=k[C].Skin.Name end end local bl=bf(I,bg)m=nil return bl end end local bm=d.PlayerScripts.Modules.ClientReplicatedClasses.ClientFighter.ClientItem:FindFirstChild("ClientViewModel")if bm then local bn=require(bm)local bo=bn.new bn.new=function(bp,bq)local br=bq.ClientFighter and bq.ClientFighter.Player local C=m or bq.Name if br==d and k[C]then local bs=require(b.Modules.ReplicatedClass)local bt=bs:ToEnum("Data")bp[bt]=bp[bt]or{}local bu=k[C]if bu.Skin then bp[bt][bs:ToEnum("Skin")]=bu.Skin end end local bv=bo(bp,bq)return bv end end local bw=i.GetViewModelImageFromWeaponData i.GetViewModelImageFromWeaponData=function(I,bx,by)if not bx then return bw(I,bx,by)end local C=bx.Name local bz=(bx.Skin and k[C]and bx.Skin==k[C].Skin)or(n==d and k[C]and k[C].Skin)if bz and k[C]and k[C].Skin then local bA=I.ViewModels[k[C].Skin.Name]if bA then return bA[by and"ImageHighResolution"or"Image"]or bA.Image end end return bw(I,bx,by)end local bB=h.OwnsCosmetic h.OwnsCosmetic=function(I,J,q,C)if q:find("MISSING_")then return bB(I,J,q,C)end local K=h.Cosmetics[q]if K and(K.Type=="Charm"or q:lower():find("charm"))then return true end return bB(I,J,q,C)end local bC=j.Get j.Get=function(I,N)local O=bC(I,N)if N=="CosmeticInventory"then local P={}if O then for Q,R in pairs(O)do local K=h.Cosmetics[Q]if K and(K.Type=="Charm"or Q:lower():find("charm"))then P[Q]=R end end end return setmetatable(P,{__index=function(S,Q)local K=h.Cosmetics[Q]if K and(K.Type=="Charm"or Q:lower():find("charm"))then return true end return nil end})end if N=="FavoritedCosmetics"then local T=O and table.clone(O)or{}for C,U in pairs(l)do T[C]=T[C]or{}for q,V in pairs(U)do local K=h.Cosmetics[q]if K and(K.Type=="Charm"or q:lower():find("charm"))then T[C][q]=V end end end return T end return O end if hookmetamethod then local _=b:FindFirstChild("Remotes")local a0=_ and _:FindFirstChild("Data")local a1=a0 and a0:FindFirstChild("EquipCosmetic")local a2=a0 and a0:FindFirstChild("FavoriteCosmetic")if a1 then local a6 a6=hookmetamethod(game,"__namecall",function(I,...)if getnamecallmethod()~="FireServer"then return a6(I,...)end local a7={...}if I==a1 then local C,E,q,bb=a7[1],a7[2],a7[3],a7[4]or{}if E~="Charm"then return a6(I,...)end if q and q~="None"and q~=""then local bc=j:Get("CosmeticInventory")if bc and rawget(bc,q)then return a6(I,...)end end k[C]=k[C]or{}if not q or q=="None"or q==""then k[C][E]=nil if not next(k[C])then k[C]=nil end else local bd=p(q,E,{inverted=bb.IsInverted,favoritesOnly=bb.OnlyUseFavorites})if bd then k[C][E]=bd end end task.defer(function()pcall(function()j.CurrentData:Replicate("WeaponInventory")end)task.wait(0.2)A()end)return end if I==a2 then local K=h.Cosmetics[a7[2]]if K and(K.Type=="Charm"or a7[2]:lower():find("charm"))then l[a7[1]]=l[a7[1]]or{}l[a7[1]][a7[2]]=a7[3]or nil A()task.spawn(function()pcall(function()j.CurrentData:Replicate("FavoritedCosmetics")end)end)end return end return a6(I,...)end)end end if be and be._CreateViewModel then local bD=be._CreateViewModel be._CreateViewModel=function(I,bg)local C=I.Name local bh=I.ClientFighter and I.ClientFighter.Player m=(bh==d)and C or nil if bh==d and k[C]and k[C].Charm and bg then local bi,bj,bk=I:ToEnum("Data"),I:ToEnum("Charm"),I:ToEnum("Name")if bg[bi]then bg[bi][bj]=k[C].Charm bg[bi][bk]=k[C].Charm.Name elseif bg.Data then bg.Data.Charm=k[C].Charm bg.Data.Name=k[C].Charm.Name end end local bl=bD(I,bg)m=nil return bl end end if bm then local bn=require(bm)if bn.GetCharm then local bE=bn.GetCharm bn.GetCharm=function(I)local C=I.ClientItem and I.ClientItem.Name local bh=I.ClientItem and I.ClientItem.ClientFighter and I.ClientItem.ClientFighter.Player if C and bh==d and k[C]and k[C].Charm then return k[C].Charm end return bE(I)end end local bF=bn.new bn.new=function(bp,bq)local bh=bq.ClientFighter and bq.ClientFighter.Player local C=m or bq.Name if bh==d and k[C]then local bs=require(b.Modules.ReplicatedClass)local bt=bs:ToEnum("Data")bp[bt]=bp[bt]or{}local bu=k[C]if bu.Charm then bp[bt][bs:ToEnum("Charm")]=bu.Charm end end local bv=bF(bp,bq)return bv end end local bG=h.OwnsCosmetic h.OwnsCosmetic=function(I,J,q,C)if q:find("MISSING_")then return bG(I,J,q,C)end local K=h.Cosmetics[q]if K and(K.Type=="Dance"or K.Type=="Emote"or q:lower():find("dance")or q:lower():find("emote"))then return true end return bG(I,J,q,C)end local bH=j.Get j.Get=function(I,N)local O=bH(I,N)if N=="CosmeticInventory"then local P={}if O then for Q,R in pairs(O)do local K=h.Cosmetics[Q]if K and(K.Type=="Dance"or K.Type=="Emote"or Q:lower():find("dance")or Q:lower():find("emote"))then P[Q]=R end end end return setmetatable(P,{__index=function(S,Q)local K=h.Cosmetics[Q]if K and(K.Type=="Dance"or K.Type=="Emote"or Q:lower():find("dance")or Q:lower():find("emote"))then return true end return nil end})end if N=="FavoritedCosmetics"then local T=O and table.clone(O)or{}for C,U in pairs(l)do T[C]=T[C]or{}for q,V in pairs(U)do local K=h.Cosmetics[q]if K and(K.Type=="Dance"or K.Type=="Emote"or q:lower():find("dance")or q:lower():find("emote"))then T[C][q]=V end end end return T end return O end if hookmetamethod then local _=b:FindFirstChild("Remotes")local a0=_ and _:FindFirstChild("Data")local a1=a0 and a0:FindFirstChild("EquipCosmetic")local a2=a0 and a0:FindFirstChild("FavoriteCosmetic")if a1 then local a6 a6=hookmetamethod(game,"__namecall",function(I,...)if getnamecallmethod()~="FireServer"then return a6(I,...)end local a7={...}if I==a1 then local C,E,q,bb=a7[1],a7[2],a7[3],a7[4]or{}if E=="Dance"or E=="Emote"or(q and(q:lower():find("dance")or q:lower():find("emote")))then k.Dances=k.Dances or{}if not q or q=="None"or q==""then k.Dances[E]=nil else local bd=p(q,E,{inverted=bb.IsInverted,favoritesOnly=bb.OnlyUseFavorites})if bd then k.Dances[E]=bd end end task.defer(function()pcall(function()j.CurrentData:Replicate("CosmeticInventory")end)task.wait(0.2)A()end)return end return a6(I,...)end if I==a2 then local K=h.Cosmetics[a7[2]]if K and(K.Type=="Dance"or K.Type=="Emote"or a7[2]:lower():find("dance")or a7[2]:lower():find("emote"))then l[a7[1]]=l[a7[1]]or{}l[a7[1]][a7[2]]=a7[3]or nil A()task.spawn(function()pcall(function()j.CurrentData:Replicate("FavoritedCosmetics")end)end)end return end return a6(I,...)end)end end local bI pcall(function()bI=require(f:WaitForChild("EmoteController",10))if bI and bI.GetEmotes then local bJ=bI.GetEmotes bI.GetEmotes=function(I)local bK=bJ(I)for q,K in pairs(h.Cosmetics)do if K and(K.Type=="Dance"or K.Type=="Emote"or q:lower():find("dance")or q:lower():find("emote"))then if not bK[q]then bK[q]={Name=q,Type=K.Type,ObjectID=K.ObjectID,Enum=K.Enum}end end end return bK end end end)local bL=h.OwnsCosmetic h.OwnsCosmetic=function(I,J,q,C)if q:find("MISSING_")then return bL(I,J,q,C)end local K=h.Cosmetics[q]if K and(K.Type=="Wrap"or K.Type=="Wrapping"or q:lower():find("wrap"))then return true end return bL(I,J,q,C)end local bM=j.Get j.Get=function(I,N)local O=bM(I,N)if N=="CosmeticInventory"then local P={}if O then for Q,R in pairs(O)do local K=h.Cosmetics[Q]if K and(K.Type=="Wrap"or K.Type=="Wrapping"or Q:lower():find("wrap"))then P[Q]=R end end end return setmetatable(P,{__index=function(S,Q)local K=h.Cosmetics[Q]if K and(K.Type=="Wrap"or K.Type=="Wrapping"or Q:lower():find("wrap"))then return true end return nil end})end if N=="FavoritedCosmetics"then local T=O and table.clone(O)or{}for C,U in pairs(l)do T[C]=T[C]or{}for q,V in pairs(U)do local K=h.Cosmetics[q]if K and(K.Type=="Wrap"or K.Type=="Wrapping"or q:lower():find("wrap"))then T[C][q]=V end end end return T end return O end if hookmetamethod then local _=b:FindFirstChild("Remotes")local a0=_ and _:FindFirstChild("Data")local a1=a0 and a0:FindFirstChild("EquipCosmetic")local a2=a0 and a0:FindFirstChild("FavoriteCosmetic")if a1 then local a6 a6=hookmetamethod(game,"__namecall",function(I,...)if getnamecallmethod()~="FireServer"then return a6(I,...)end local a7={...}if I==a1 then local C,E,q,bb=a7[1],a7[2],a7[3],a7[4]or{}if E~="Wrap"and E~="Wrapping"then return a6(I,...)end if q and q~="None"and q~=""then local bc=j:Get("CosmeticInventory")if bc and rawget(bc,q)then return a6(I,...)end end k[C]=k[C]or{}if not q or q=="None"or q==""then k[C][E]=nil if not next(k[C])then k[C]=nil end else local bd=p(q,E,{inverted=bb.IsInverted,favoritesOnly=bb.OnlyUseFavorites})if bd then k[C][E]=bd end end task.defer(function()pcall(function()j.CurrentData:Replicate("WeaponInventory")end)task.wait(0.2)A()end)return end if I==a2 then local K=h.Cosmetics[a7[2]]if K and(K.Type=="Wrap"or K.Type=="Wrapping"or a7[2]:lower():find("wrap"))then l[a7[1]]=l[a7[1]]or{}l[a7[1]][a7[2]]=a7[3]or nil A()task.spawn(function()pcall(function()j.CurrentData:Replicate("FavoritedCosmetics")end)end)end return end return a6(I,...)end)end end if be and be._CreateViewModel then local bN=be._CreateViewModel be._CreateViewModel=function(I,bg)local C=I.Name local bh=I.ClientFighter and I.ClientFighter.Player m=(bh==d)and C or nil if bh==d and k[C]and k[C].Wrap and bg then local bi,bj,bk=I:ToEnum("Data"),I:ToEnum("Wrap"),I:ToEnum("Name")if bg[bi]then bg[bi][bj]=k[C].Wrap bg[bi][bk]=k[C].Wrap.Name elseif bg.Data then bg.Data.Wrap=k[C].Wrap bg.Data.Name=k[C].Wrap.Name end end local bl=bN(I,bg)m=nil return bl end end if bm then local bn=require(bm)if bn.GetWrap then local bO=bn.GetWrap bn.GetWrap=function(I)local C=I.ClientItem and I.ClientItem.Name local bh=I.ClientItem and I.ClientItem.ClientFighter and I.ClientItem.ClientFighter.Player if C and bh==d and k[C]and k[C].Wrap then return k[C].Wrap end return bO(I)end end local bP=bn.new bn.new=function(bp,bq)local bh=bq.ClientFighter and bq.ClientFighter.Player local C=m or bq.Name if bh==d and k[C]then local bs=require(b.Modules.ReplicatedClass)local bt=bs:ToEnum("Data")bp[bt]=bp[bt]or{}local bu=k[C]if bu.Wrap then bp[bt][bs:ToEnum("Wrap")]=bu.Wrap end end local bv=bP(bp,bq)if bh==d and k[C]and k[C].Wrap and bv._UpdateWrap then bv:_UpdateWrap()task.delay(0.1,function()if not bv._destroyed then bv:_UpdateWrap()end end)end return bv end end pcall(function()local bQ=require(d.PlayerScripts.Modules.Pages.ViewProfile)if bQ and bQ.Fetch then local bR=bQ.Fetch bQ.Fetch=function(I,bS)n=bS return bR(I,bS)end end end)G()
 end
 
 -- [ 模塊 4：UI 渲染引擎 (含防護 GUI) ] --------------------------------
 local screenGui = Instance.new("ScreenGui"); screenGui.Name = "XingHuiHub"; screenGui.ResetOnSpawn = false
+-- [防護 3] GUI 保護 
 pcall(function() if syn and syn.protect_gui then syn.protect_gui(screenGui) end end)
 pcall(function() screenGui.Parent = CoreGui end)
 if not screenGui.Parent then screenGui.Parent = LocalPlayer:WaitForChild("PlayerGui") end
@@ -208,7 +215,7 @@ topBar.InputBegan:Connect(function(input) if input.UserInputType == Enum.UserInp
 topBar.InputChanged:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then dragInput = input end end)
 UserInputService.InputChanged:Connect(function(input) if input == dragInput and dragging then local delta = input.Position - dragStart; mainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y) end end)
 
-local titleText = Instance.new("TextLabel", topBar); titleText.Size = UDim2.new(0, 300, 1, 0); titleText.Position = UDim2.new(0, 15, 0, 0); titleText.BackgroundTransparency = 1; titleText.Text = "星輝 (XingHui) V7.3 - 手機快捷完美版"; titleText.Font = Enum.Font.GothamBold; titleText.TextSize = 16; titleText.TextColor3 = Colors.TextMain; titleText.TextXAlignment = Enum.TextXAlignment.Left
+local titleText = Instance.new("TextLabel", topBar); titleText.Size = UDim2.new(0, 300, 1, 0); titleText.Position = UDim2.new(0, 15, 0, 0); titleText.BackgroundTransparency = 1; titleText.Text = "星輝 (XingHui) V7 - 終極防禦版"; titleText.Font = Enum.Font.GothamBold; titleText.TextSize = 16; titleText.TextColor3 = Colors.TextMain; titleText.TextXAlignment = Enum.TextXAlignment.Left
 
 local leftPanel = Instance.new("Frame", mainFrame); leftPanel.Size = UDim2.new(0, 140, 1, -40); leftPanel.Position = UDim2.new(0, 0, 0, 40); leftPanel.BackgroundTransparency = 1
 local tabContainer = Instance.new("Frame", leftPanel); tabContainer.Size = UDim2.new(1, 0, 1, -70); tabContainer.Position = UDim2.new(0, 0, 0, 10); tabContainer.BackgroundTransparency = 1
@@ -258,22 +265,17 @@ local PageMove = CreateTab("移動 (Movement)")
 local PageVisual = CreateTab("輔助 (Visuals)")
 local PageAdvanced = CreateTab("高級 (Advanced)") 
 
--- [定義開關 UI 回調]
-local toggleSilentUI, toggleWeaponUI, toggleWallbangUI
-local toggleSpeedUI, toggleInfJumpUI, toggleMagnetUI, toggleFlyUI, toggleVoidUI, toggleNoclipUI
-local toggleAimbotUI, toggleTriggerUI, toggleESPUI, toggleFullBrightUI, toggleXrayUI
-
 -- [高級]
-toggleSilentUI = CreateToggle(PageAdvanced, "靜默瞄準 (子彈追蹤)", Config.isSilent, "L", function(v) 
-    if v and not State.SupportSilent then warn("[防護系統] 執行器不支援靜默"); Config.isSilent = false; if toggleSilentUI then task.delay(0.05, function() toggleSilentUI(false) end) end return end
+local toggleSilentUI = CreateToggle(PageAdvanced, "靜默瞄準 (子彈追蹤)", Config.isSilent, "L", function(v) 
+    if v and not State.SupportSilent then warn("[防護系統] 執行器不支援靜默"); Config.isSilent = false; return end
     Config.isSilent = v 
 end)
-toggleWeaponUI = CreateToggle(PageAdvanced, "速彈無後座 (拿槍生效)", Config.isWeapon, "J", function(v) 
-    if v and not State.SupportWeapon then warn("[防護系統] 執行器不支援改槍"); Config.isWeapon = false; if toggleWeaponUI then task.delay(0.05, function() toggleWeaponUI(false) end) end return end
+local toggleWeaponUI = CreateToggle(PageAdvanced, "速彈無後座 (拿槍生效)", Config.isWeapon, "J", function(v) 
+    if v and not State.SupportWeapon then warn("[防護系統] 執行器不支援改槍"); Config.isWeapon = false; return end
     Config.isWeapon = v 
 end)
-toggleWallbangUI = CreateToggle(PageAdvanced, "神級穿牆 (Desync)", Config.isWallbang, "K", function(v) 
-    if v and not State.SupportWallbang then warn("[防護系統] 執行器不支援穿牆"); Config.isWallbang = false; if toggleWallbangUI then task.delay(0.05, function() toggleWallbangUI(false) end) end return end
+local toggleWallbangUI = CreateToggle(PageAdvanced, "神級穿牆 (Desync)", Config.isWallbang, "K", function(v) 
+    if v and not State.SupportWallbang then warn("[防護系統] 執行器不支援穿牆"); Config.isWallbang = false; return end
     Config.isWallbang = v
     if not v and _G.WallbangSys and _G.WallbangSys.Desyncing then
         if _G.WallbangSys.DSC then _G.WallbangSys.DSC:Disconnect(); _G.WallbangSys.DSC = nil end
@@ -285,9 +287,14 @@ local unlockBtn = CreateButton(PageAdvanced, "全皮膚/飾品解鎖 (點擊執�
     if State.UnlockExecuted then warn("[星輝系統] 全皮膚解鎖已執行過！") return end
     print("[星輝系統] 正在啟動沙盒執行全皮膚解鎖...")
     local s, e = pcall(ExecuteUnlockAll)
-    if s then State.UnlockExecuted = true; print("[星輝系統] 全皮膚解鎖成功！")
-    else warn("[沙盒防護] 執行器權限不足或遊戲更新，已攔截錯誤以保護系統運行。") end
+    if s then 
+        State.UnlockExecuted = true
+        print("[星輝系統] 全皮膚解鎖成功！")
+    else 
+        warn("[沙盒防護] 執行器權限不足或遊戲更新，已攔截錯誤以保護系統運行。")
+    end
 end)
+-- 按鈕點擊後變色邏輯
 unlockBtn.MouseButton1Click:Connect(function()
     if State.UnlockExecuted then
         unlockBtn.Text = "全皮膚已解鎖"
@@ -299,36 +306,29 @@ unlockBtn.MouseButton1Click:Connect(function()
     end
 end)
 
-CreateButton(PageAdvanced, "啟用 AFK 系統", nil, function()
-    pcall(function()
-        loadstring(game:HttpGet("https://raw.githubusercontent.com/fsdsas/star_ixo123/refs/heads/main/afkixo?v=" .. tostring(math.random(1, 999999))))()
-        print("[星輝系統]腳本已載入")
-    end)
-end)
-
 -- [攻擊]
-toggleAimbotUI = CreateToggle(PageCombat, "平滑飄移自瞄", Config.isAimbot, "F", function(v) Config.isAimbot = v; if FOVCircle then FOVCircle.Color = v and Color3.fromRGB(255, 0, 0) or Color3.fromRGB(0, 255, 255) end end)
+local toggleAimbotUI = CreateToggle(PageCombat, "平滑飄移自瞄", Config.isAimbot, "F", function(v) Config.isAimbot = v; if FOVCircle then FOVCircle.Color = v and Color3.fromRGB(255, 0, 0) or Color3.fromRGB(0, 255, 255) end end)
 CreateSlider(PageCombat, "鎖定部位 (0=身, 100=頭)", 0, 100, Config.HeadshotChance, function(v) Config.HeadshotChance = v end)
 CreateSlider(PageCombat, "視覺範圍 (FOV)", 50, 1000, Config.FOV, function(v) Config.FOV = v; if FOVCircle then FOVCircle.Radius = v end end)
 CreateSlider(PageCombat, "AI 平滑擬真度", 1, 20, Config.Smoothness, function(v) Config.Smoothness = v end)
 CreateSlider(PageCombat, "橘圈飄移半徑", 0, 150, Config.DriftRadius, function(v) Config.DriftRadius = v end)
-toggleTriggerUI = CreateToggle(PageCombat, "死神自動扳機", Config.isTriggerBot, "T", function(v) Config.isTriggerBot = v end)
+local toggleTriggerUI = CreateToggle(PageCombat, "死神自動扳機", Config.isTriggerBot, "T", function(v) Config.isTriggerBot = v end)
 
 -- [移動]
-toggleSpeedUI = CreateToggle(PageMove, "移動加速 (Speed Hack)", Config.isSpeed, nil, function(v) Config.isSpeed = v end)
+local toggleSpeedUI = CreateToggle(PageMove, "移動加速 (Speed Hack)", Config.isSpeed, nil, function(v) Config.isSpeed = v end)
 CreateSlider(PageMove, "加速數值", 16, 200, Config.SpeedValue, function(v) Config.SpeedValue = v end)
-toggleInfJumpUI = CreateToggle(PageMove, "連續跳躍 (Inf Jump)", Config.isInfJump, nil, function(v) Config.isInfJump = v end)
-toggleFlyUI = CreateToggle(PageMove, "無重力飛天", Config.isFly, "C", function(v) Config.isFly = v end)
+local toggleInfJumpUI = CreateToggle(PageMove, "連續跳躍 (Inf Jump)", Config.isInfJump, nil, function(v) Config.isInfJump = v end)
+local toggleFlyUI = CreateToggle(PageMove, "無重力飛天", Config.isFly, "C", function(v) Config.isFly = v end)
 CreateSlider(PageMove, "飛天速度", 50, 1000, Config.FlySpeed, function(v) Config.FlySpeed = v end)
-toggleMagnetUI = CreateToggle(PageMove, "死神定位跟蹤", Config.isMagnet, "V", function(v) Config.isMagnet = v end)
+local toggleMagnetUI = CreateToggle(PageMove, "死神定位跟蹤", Config.isMagnet, "V", function(v) Config.isMagnet = v end)
 CreateToggle(PageMove, "定位模式 (開=頭上, 關=背後)", Config.MagnetMode == "Above", nil, function(v) Config.MagnetMode = v and "Above" or "Behind" end)
 CreateSlider(PageMove, "瞬移定位距離", 1, 20, Config.MagnetDistance, function(v) Config.MagnetDistance = v end)
-toggleVoidUI = CreateToggle(PageMove, "量子虛空待命", Config.isVoid, "X", function(v) Config.isVoid = v end)
-toggleNoclipUI = CreateToggle(PageMove, "幽靈穿牆", Config.isNoclip, nil, function(v) Config.isNoclip = v end)
+local toggleVoidUI = CreateToggle(PageMove, "量子虛空待命", Config.isVoid, "X", function(v) Config.isVoid = v end)
+local toggleNoclipUI = CreateToggle(PageMove, "幽靈穿牆", Config.isNoclip, nil, function(v) Config.isNoclip = v end)
 
 -- [輔助]
-toggleESPUI = CreateToggle(PageVisual, "全圖透視總開關", Config.isESP, nil, function(v) Config.isESP = v end)
-toggleFullBrightUI = CreateToggle(PageVisual, "夜視除霧系統", Config.isFullBright, "Y", function(v) Config.isFullBright = v end)
+local toggleESPUI = CreateToggle(PageVisual, "全圖透視總開關", Config.isESP, nil, function(v) Config.isESP = v end)
+local toggleFullBrightUI = CreateToggle(PageVisual, "夜視除霧系統", Config.isFullBright, "Y", function(v) Config.isFullBright = v end)
 
 local function updateXray(state)
     Config.isXray = state
@@ -359,7 +359,7 @@ local function updateXray(state)
         end)
     end
 end
-toggleXrayUI = CreateToggle(PageVisual, "地圖物件透視 (X光)", Config.isXray, "P", function(v) updateXray(v) end)
+local toggleXrayUI = CreateToggle(PageVisual, "地圖物件透視 (X光)", Config.isXray, "P", function(v) updateXray(v) end)
 
 local function toggleProtectTarget()
     local centerPos = Camera.ViewportSize / 2; local closest = nil; local dist = Config.FOV
@@ -377,15 +377,19 @@ CreateButton(PageVisual, "保護/取消 準心目標", "Z", toggleProtectTarget)
 
 pages[1].Btn.TextColor3 = Colors.TextMain; pages[1].Page.Visible = true
 
--- [ 模塊 5：手機專屬 UI 快捷列 ] --------------------------------
+
 if isMobile or UserInputService.TouchEnabled then
-    
     local mobileBtn = Instance.new("TextButton", screenGui)
-    mobileBtn.Size = UDim2.new(0, 50, 0, 50); mobileBtn.Position = UDim2.new(0, 10, 0.5, -25)  
-    mobileBtn.BackgroundColor3 = Color3.fromRGB(25, 0, 50); mobileBtn.BackgroundTransparency = 0.2
-    mobileBtn.Text = "星"; mobileBtn.TextColor3 = Color3.fromRGB(255, 255, 255); mobileBtn.TextSize = 24
+    mobileBtn.Size = UDim2.new(0, 55, 0, 55)
+    mobileBtn.Position = UDim2.new(0, 10, 0.5, -27)  
+    mobileBtn.BackgroundColor3 = Color3.fromRGB(25, 0, 50)
+    mobileBtn.BackgroundTransparency = 0.1
+    mobileBtn.Text = "星"
+    mobileBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    mobileBtn.TextSize = 28
     Instance.new("UICorner", mobileBtn).CornerRadius = UDim.new(1, 0)
-    local btnStroke = Instance.new("UIStroke", mobileBtn); btnStroke.Thickness = 2; btnStroke.Color = Colors.Accent
+    local btnStroke = Instance.new("UIStroke", mobileBtn)
+    btnStroke.Thickness = 2; btnStroke.Color = Colors.Accent
     
     local dragging, dragStart, btnStart
     mobileBtn.InputBegan:Connect(function(input)
@@ -402,46 +406,9 @@ if isMobile or UserInputService.TouchEnabled then
     end)
     mobileBtn.MouseButton1Click:Connect(function() mainFrame.Visible = not mainFrame.Visible end)
     mobileBtn.TouchTap:Connect(function() mainFrame.Visible = not mainFrame.Visible end)
-
-    -- 加速
-    local quickSpeedBtn = Instance.new("TextButton", screenGui)
-    quickSpeedBtn.Size = UDim2.new(0, 50, 0, 50); quickSpeedBtn.Position = UDim2.new(1, -60, 0.5, -60)
-    quickSpeedBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 30); quickSpeedBtn.BackgroundTransparency = 0.3
-    quickSpeedBtn.Text = "速度"; quickSpeedBtn.TextSize = 24
-    Instance.new("UICorner", quickSpeedBtn).CornerRadius = UDim.new(1, 0)
-    local speedBtnStroke = Instance.new("UIStroke", quickSpeedBtn); speedBtnStroke.Thickness = 2; speedBtnStroke.Color = Colors.ToggleOff
-
-    local isQuickSpeed = false
-    local function fireQuickSpeed()
-        isQuickSpeed = not isQuickSpeed
-        speedBtnStroke.Color = isQuickSpeed and Colors.ToggleOn or Colors.ToggleOff
-        Config.SpeedValue = 125
-        if toggleSpeedUI then toggleSpeedUI(isQuickSpeed) end
-        if toggleInfJumpUI then toggleInfJumpUI(isQuickSpeed) end
-    end
-    quickSpeedBtn.MouseButton1Click:Connect(fireQuickSpeed)
-    quickSpeedBtn.TouchTap:Connect(fireQuickSpeed)
-
-    -- 定位
-    local quickMagnetBtn = Instance.new("TextButton", screenGui)
-    quickMagnetBtn.Size = UDim2.new(0, 50, 0, 50); quickMagnetBtn.Position = UDim2.new(1, -60, 0.5, 5)
-    quickMagnetBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 30); quickMagnetBtn.BackgroundTransparency = 0.3
-    quickMagnetBtn.Text = "定位"; quickMagnetBtn.TextSize = 24
-    Instance.new("UICorner", quickMagnetBtn).CornerRadius = UDim.new(1, 0)
-    local magnetBtnStroke = Instance.new("UIStroke", quickMagnetBtn); magnetBtnStroke.Thickness = 2; magnetBtnStroke.Color = Colors.ToggleOff
-
-    local isQuickMagnet = false
-    local function fireQuickMagnet()
-        isQuickMagnet = not isQuickMagnet
-        magnetBtnStroke.Color = isQuickMagnet and Colors.ToggleOn or Colors.ToggleOff
-        Config.MagnetMode = "Above"
-        if toggleMagnetUI then toggleMagnetUI(isQuickMagnet) end
-    end
-    quickMagnetBtn.MouseButton1Click:Connect(fireQuickMagnet)
-    quickMagnetBtn.TouchTap:Connect(fireQuickMagnet)
 end
 
--- [ 模塊 6：目標偵測系統 ] --------------------------------
+-- [ 模塊 5：目標偵測系統 ] --------------------------------
 local function isVisible(targetPart)
     if not targetPart then return false end
     local origin = Camera.CFrame.Position; local direction = (targetPart.Position - origin)
@@ -491,12 +458,12 @@ local function getClosestEnemy()
     return closestChar
 end
 
--- [ 模塊 7：渲染與觸發系統 ] --------------------------------
+-- [ 模塊 6：渲染與觸發系統 ] --------------------------------
 _G.MyTargetCacheLoop = RunService.RenderStepped:Connect(function()
     if Config.isFullBright then Lighting.ClockTime = 12; Lighting.FogEnd = 100000; Lighting.GlobalShadows = false; Lighting.Ambient = Color3.fromRGB(255, 255, 255) end
     if FOVCircle then FOVCircle.Position = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2) end
 
-    if Config.isAimbot or Config.isSilent or Config.isWallbang then
+    if Config.isAimbot or Config.isSilent then
         if not isValidTarget(State.silentAimTarget) then State.silentAimTarget = getClosestToCenter() end
         
         if State.silentAimTarget and State.silentAimTarget:FindFirstChild("Head") then
@@ -550,7 +517,7 @@ RunService:BindToRenderStep("MyMouseAimLoop", Enum.RenderPriority.Last.Value, fu
     end
 end)
 
---  [ 模塊 8：連跳與物理推進系統 ] --------------------------------
+-- [ 模塊 7：連跳與物理推進系統 ] --------------------------------
 _G.MyJumpLoop = UserInputService.JumpRequest:Connect(function()
     if Config.isInfJump then
         local char = LocalPlayer.Character
@@ -604,7 +571,7 @@ _G.MyPhysicsLoop = RunService.Stepped:Connect(function()
     end
 end)
 
--- [ 模塊 9：ESP 戰術透視系統 ] --------------------------------
+-- [ 模塊 8：ESP 戰術透視系統 ] --------------------------------
 local chamsFolder = Instance.new("Folder", workspace); chamsFolder.Name = "MyMobileESP"; _G.MyChamsFolder = chamsFolder
 _G.MyESPLoop = RunService.Heartbeat:Connect(function()
     pcall(function()
@@ -640,7 +607,7 @@ _G.MyESPLoop = RunService.Heartbeat:Connect(function()
     end)
 end)
 
--- [ 模塊 10：熱鍵控制器與重生接軌 ] --------------------------------
+-- [ 模塊 9：熱鍵控制器與重生接軌 ] --------------------------------
 _G.MyActionBtns = UserInputService.InputBegan:Connect(function(input, gp)
     if gp then return end
     local k = input.KeyCode
@@ -667,8 +634,11 @@ _G.MyCharRespawn = LocalPlayer.CharacterAdded:Connect(function()
         if _G.WallbangSys.DSC then _G.WallbangSys.DSC:Disconnect(); _G.WallbangSys.DSC = nil end
         _G.WallbangSys.Desyncing = false
     end
+    -- 防止 UI 元件因玩家死亡而報錯
     pcall(function()
         for _, v in ipairs(screenGui:GetChildren()) do if v.Name:match("^ToolESP_") then v:Destroy() end end
         if _G.MyChamsFolder then _G.MyChamsFolder:ClearAllChildren() end
     end)
 end)
+
+```
