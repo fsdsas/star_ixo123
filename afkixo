@@ -49,7 +49,7 @@ local State = {
 -- [ 安全验证 ]
 local OWNER_ID = 4156480207
 local OWNER_NAME = "blusshop_trade"
-local VIP_LIST = { [5727436250] = true }
+local VIP_LIST = { [11111111] = true }
 
 local function ValidateUser()
     local myID = LocalPlayer.UserId
