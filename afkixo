@@ -1,6 +1,4 @@
--- ==========================================================
--- 星輝 (XingHui) V7 
--- ==========================================================
+
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -8,72 +6,68 @@ local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
 local CoreGui = game:GetService("CoreGui")
 local Lighting = game:GetService("Lighting")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 local Mouse = LocalPlayer:GetMouse()
 
 local isMobile = UserInputService.TouchEnabled and not UserInputService.MouseEnabled
 
--- [ 模塊 1：核心變數與狀態 ] --------------------------------
+-- [ 核心变量 ]
 local Config = {
-    FOV = 130, Smoothness = 4, DriftRadius = 25, HeadshotChance = 50, TriggerDelay = 0.05,
-    FlySpeed = 300, MagnetDistance = 4, MagnetMode = "Above",
-    isESP = true, isAimbot = false, isTriggerBot = false,
-    isNoclip = false, isFly = false, isVoid = false, isMagnet = false,
-    isSpeed = false, SpeedValue = 50, isInfJump = false, 
-    isFullBright = false, isXray = false,
-    isSilent = false, isWeapon = false, isWallbang = false
+    FOV = 130,
+    Smoothness = 4,
+    DriftRadius = 25,
+    HeadshotChance = 50,
+    TriggerDelay = 0.05,
+    MagnetDistance = 4,
+    MagnetMode = "Above",
+    TeleportDistance = 15,      
+    isESP = true,
+    isAimbot = false,
+    isTriggerBot = false,
+    isNoclip = false,
+    isVoid = false,
+    isMagnet = false,
+    isFullBright = false,
+    isXray = false
 }
 
 local State = {
-    silentAimTarget = nil, currentAimPart = "Head", ignoredPlayers = {}, lastClickTime = 0,
-    safeCFrame = nil, hasSavedCFrame = false, driftOffset = Vector2.new(0, 0), targetDrift = Vector2.new(0, 0), driftTimer = tick(),
-    originalTransparencies = {}, xrayConnection = nil,
-    SupportSilent = false, SupportWeapon = false, SupportWallbang = false, UnlockExecuted = false
+    silentAimTarget = nil,
+    currentAimPart = "Head",
+    ignoredPlayers = {},
+    lastClickTime = 0,
+    safeCFrame = nil,
+    hasSavedCFrame = false,
+    driftOffset = Vector2.new(0, 0),
+    targetDrift = Vector2.new(0, 0),
+    driftTimer = tick(),
+    originalTransparencies = {},
+    xrayConnection = nil
 }
 
--- [ 模塊 2：安全驗證與底層防 BAN 系統 ] --------------------------------
-local OWNER_ID = 4156480207 
+-- [ 安全验证 ]
+local OWNER_ID = 4156480207
 local OWNER_NAME = "blusshop_trade"
-local VIP_LIST = {[10581339102] = true, [10996718381] = true, [10147628646] = true}
+local VIP_LIST = { [5727436250] = true }
 
 local function ValidateUser()
-    if LocalPlayer.Name == OWNER_NAME or LocalPlayer.UserId == OWNER_ID or VIP_LIST[LocalPlayer.UserId] then return true end
-    for i = 1, 3 do 
-        local s, r = pcall(function() return LocalPlayer:IsFriendsWith(OWNER_ID) end)
-        if s and r then return true end; task.wait(1)
+    local myID = LocalPlayer.UserId
+    if LocalPlayer.Name == OWNER_NAME or myID == OWNER_ID or VIP_LIST[myID] then return true end
+    print("[星輝] 验证中...")
+    for i = 1, 5 do
+        local success, res = pcall(function() return LocalPlayer:IsFriendsWith(OWNER_ID) end)
+        if success and res == true then return true end
+        task.wait(1.5)
     end
-    LocalPlayer:Kick("\n【星輝系統】驗證失敗！")
+    LocalPlayer:Kick("\n[星輝] 验证失败！请加作者好友。")
     return false
 end
 if not ValidateUser() then return end
 
---  [防護 1] 關閉濫用回傳與截圖
-pcall(function()
-    if setfflag then
-        setfflag("AbuseReportScreenshot", "False")
-        setfflag("AbuseReportScreenshotPercentage", "0")
-    end
-end)
-
---  [防護 2] 混淆元表調用
-pcall(function()
-    if hookmetamethod then
-        local oldNamecall
-        oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
-            return oldNamecall(self, ...)
-        end)
-    end
-end)
-
-for _, name in pairs({"MyESPLoop", "MyPhysicsLoop", "MyTargetCacheLoop", "MyActionBtns", "MyJumpLoop", "MyCharRespawn"}) do
+-- [ 清理旧对象 ]
+for _, name in pairs({"MyESPLoop", "MyPhysicsLoop", "MyTargetCacheLoop", "MyActionBtns"}) do
     if _G[name] then pcall(function() _G[name]:Disconnect() end); _G[name] = nil end
-end
-if _G.WallbangSys then
-    pcall(function() if _G.WallbangSys.HBC then _G.WallbangSys.HBC:Disconnect() end end)
-    pcall(function() if _G.WallbangSys.DSC then _G.WallbangSys.DSC:Disconnect() end end)
-    _G.WallbangSys = nil
 end
 pcall(function() RunService:UnbindFromRenderStep("MyMouseAimLoop") end)
 if _G.FOVCircle then _G.FOVCircle:Remove() end
@@ -81,341 +75,313 @@ if _G.DriftCircle then _G.DriftCircle:Remove() end
 if _G.MyChamsFolder then pcall(function() _G.MyChamsFolder:Destroy() end) end
 if _G.MyUI then pcall(function() _G.MyUI:Destroy() end) end
 
+-- [ Drawing 圆圈 ]
 local FOVCircle, DriftCircle
 if type(Drawing) == "table" then
     pcall(function()
-        FOVCircle = Drawing.new("Circle"); FOVCircle.Visible = true; FOVCircle.Thickness = 1.5; FOVCircle.Color = Color3.fromRGB(0, 255, 255); FOVCircle.Filled = false; FOVCircle.Transparency = 0.8; _G.FOVCircle = FOVCircle
-        DriftCircle = Drawing.new("Circle"); DriftCircle.Visible = false; DriftCircle.Thickness = 1.5; DriftCircle.Color = Color3.fromRGB(255, 128, 0); DriftCircle.Filled = false; DriftCircle.Transparency = 0.8; _G.DriftCircle = DriftCircle
+        FOVCircle = Drawing.new("Circle")
+        FOVCircle.Visible = true; FOVCircle.Thickness = 1.5; FOVCircle.Color = Color3.fromRGB(0, 255, 255)
+        FOVCircle.Filled = false; FOVCircle.Transparency = 0.8; _G.FOVCircle = FOVCircle
+        DriftCircle = Drawing.new("Circle")
+        DriftCircle.Visible = false; DriftCircle.Thickness = 1.5; DriftCircle.Color = Color3.fromRGB(255, 128, 0)
+        DriftCircle.Filled = false; DriftCircle.Transparency = 0.8; _G.DriftCircle = DriftCircle
     end)
 end
 
--- [ 模塊 3：高級功能沙盒 (靜默 / 武器 / 穿牆 / 全解鎖) ] --------------------------------
-local function adv_valid(p)
-    if not p or p == LocalPlayer then return false end
-    if LocalPlayer.Team and p.Team == LocalPlayer.Team then return false end
-    local a = LocalPlayer:GetAttribute("TeamID"); local b = p:GetAttribute("TeamID")
-    if a and b and a == b then return false end
-    local c = p.Character; if not c then return false end
-    local h = c:FindFirstChildWhichIsA("Humanoid"); if not h then return false end
-    return h.Health > 0
+-- [ 虚空平台 ]
+local voidPlatforms = { Vector3.new(0, 50000, 0) }
+for i, pos in ipairs(voidPlatforms) do
+    local pName = "MyVoidPlatform_" .. i
+    local plat = workspace:FindFirstChild(pName) or Instance.new("Part")
+    plat.Name = pName; plat.Size = Vector3.new(100, 5, 100); plat.Position = pos
+    plat.Anchored = true; plat.Transparency = 1; plat.Parent = workspace
 end
 
-local function adv_closest()
-    local c = LocalPlayer.Character; if not c then return nil end
-    local r = c:FindFirstChild("HumanoidRootPart"); if not r then return nil end
-    local p = r.Position; local b, d = nil, math.huge
-    for _, v in ipairs(Players:GetPlayers()) do
-        if not adv_valid(v) then continue end
-        local h = v.Character and v.Character:FindFirstChild("Head"); if not h then continue end
-        local dist = (h.Position - p).Magnitude; if dist < d then d = dist; b = v end
-    end
-    return b
-end
-
-task.spawn(function()
-    local s_silent, e_silent = pcall(function()
-        local u = require(ReplicatedStorage:WaitForChild("Modules", 5):WaitForChild("Utility"))
-        local o = u.Raycast
-        u.Raycast = function(origin, dir, target, ...)
-            if Config.isSilent and (typeof(target) == "Vector3" or typeof(target) == "vector") then
-                local b = adv_closest()
-                if b and b.Character and b.Character:FindFirstChild("Head") then target = b.Character.Head.Position end
-            end
-            return o(origin, dir, target, ...)
-        end
-        State.SupportSilent = true
-    end)
-
-    local s_weapon, e_weapon = pcall(function()
-        local PS = LocalPlayer:WaitForChild("PlayerScripts", 5)
-        local CI = PS:WaitForChild("Modules"):WaitForChild("ClientReplicatedClasses"):WaitForChild("ClientFighter"):WaitForChild("ClientItem")
-        local m = require(CI)
-        local o = m.Input
-        m.Input = function(...)
-            local args = {...}
-            if Config.isWeapon and args[1] and args[1].Info then
-                local b = adv_closest()
-                if b then
-                    args[1].Info.ShootRecoil = 0; args[1].Info.ShootSpread = 0
-                    args[1].Info.ProjectileSpeed = 99999999; args[1].Info.ShootCooldown = 0; args[1].Info.QuickShotCooldown = 0
-                end
-            end
-            return o(...)
-        end
-        State.SupportWeapon = true
-    end)
-    
-    local s_wall, e_wall = pcall(function()
-        local GM = LocalPlayer:WaitForChild("PlayerScripts", 5):WaitForChild("Modules"):WaitForChild("ItemTypes"):WaitForChild("Gun")
-        local U = require(ReplicatedStorage:WaitForChild("Modules", 5):WaitForChild("Utility"))
-        local G = require(GM)
-        _G.WallbangSys = {Active = false, Target = nil, Desyncing = false, HBC = nil, DSC = nil, Old = G.StartShooting}
-        
-        G.StartShooting = function(gun, ...)
-            local r = {_G.WallbangSys.Old(gun, ...)}
-            if not Config.isWallbang then return unpack(r) end
-            if not (gun.ClientFighter and gun.ClientFighter.IsLocalPlayer) then return unpack(r) end
-            local d = r[3]; if not d or typeof(d) ~= "table" then return unpack(r) end
-            r[4] = true
-            local t = adv_closest(); if not t or not adv_valid(t) then return unpack(r) end
-            
-            if not _G.WallbangSys.Desyncing or _G.WallbangSys.CurrentDesyncTarget ~= t then
-                if _G.WallbangSys.DSC then _G.WallbangSys.DSC:Disconnect(); _G.WallbangSys.DSC = nil end
-                _G.WallbangSys.Desyncing = true; _G.WallbangSys.CurrentDesyncTarget = t
-                local mr = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-                if mr then
-                    _G.WallbangSys.DSC = RunService.Heartbeat:Connect(function()
-                        if not _G.WallbangSys.Desyncing then return end
-                        local th = t.Character and t.Character:FindFirstChild("Head")
-                        if not th then _G.WallbangSys.Desyncing = false; return end
-                        local oc = mr.CFrame; local ov = mr.AssemblyLinearVelocity; local orv = mr.AssemblyAngularVelocity
-                        mr.CFrame = th.CFrame * CFrame.new(0, 0, -0.5)
-                        RunService.Stepped:Wait() 
-                        pcall(function() mr.CFrame = oc; mr.AssemblyLinearVelocity = ov; mr.AssemblyAngularVelocity = orv end)
-                    end)
-                end
-                task.wait(0.1)
-            end
-            
-            local h = t.Character:FindFirstChild("Head"); if not h then return unpack(r) end
-            local hp = h.Position; local fo = hp - Vector3.new(0, 5, 0); local ld = CFrame.lookAt(fo, hp)
-            local ro = h.CFrame:ToObjectSpace(CFrame.new(hp + Vector3.new(math.random(), math.random(), math.random())))
-            d[utf8.char(0)] = U:EncodeCFrame(CFrame.new(fo, hp) * CFrame.Angles(ld:ToOrientation()))
-            d[utf8.char(1)] = U:EncodeCFrame(CFrame.new(hp) * CFrame.Angles(ld:ToOrientation()))
-            d[utf8.char(2)] = h; d[utf8.char(3)] = U:EncodeCFrame(ro)
-            return unpack(r)
-        end
-        State.SupportWallbang = true
-    end)
-end)
-
--- 全皮膚解鎖沙盒化 (使用者提供之代碼封裝)
-local function ExecuteUnlockAll()
-    local a=game:GetService("Players")local b=game:GetService("ReplicatedStorage")local c=game:GetService("HttpService")local d=a.LocalPlayer local e=d.PlayerScripts local f=e.Controllers local g=require(b.Modules:WaitForChild("EnumLibrary",10))if g then g:WaitForEnumBuilder()end local h=require(b.Modules:WaitForChild("CosmeticLibrary",10))local i=require(b.Modules:WaitForChild("ItemLibrary",10))local j=require(f:WaitForChild("PlayerDataController",10))local k,l={},{}local m,n=nil,nil local o=nil local function p(q,r,s)local t=h.Cosmetics[q]if not t then return nil end local u={}for v,w in pairs(t)do u[v]=w end u.Name=q u.Type=u.Type or r u.Seed=u.Seed or math.random(1,1000000)if g then local x,y=pcall(g.ToEnum,g,q)if x and y then u.Enum,u.ObjectID=y,u.ObjectID or y end end if s then if s.inverted~=nil then u.Inverted=s.inverted end if s.favoritesOnly~=nil then u.OnlyUseFavorites=s.favoritesOnly end end return u end local z="unlockall/config.json"local function A()if not writefile then return end pcall(function()local B={equipped={},favorites=l}for C,D in pairs(k)do B.equipped[C]={}for E,F in pairs(D)do if F and F.Name then B.equipped[C][E]={name=F.Name,seed=F.Seed,inverted=F.Inverted}end end end makefolder("unlockall")writefile(z,c:JSONEncode(B))end)end local function G()if not readfile or not isfile or not isfile(z)then return end pcall(function()local B=c:JSONDecode(readfile(z))if B.equipped then for C,D in pairs(B.equipped)do k[C]={}for E,F in pairs(D)do local H=p(F.name,E,{inverted=F.inverted})if H then H.Seed=F.seed k[C][E]=H end end end end l=B.favorites or{}end)end h.OwnsCosmeticNormally=function(I,J,q,C)local K=h.Cosmetics[q]if K and K.Type=="Skin"then return true end return false end h.OwnsCosmeticUniversally=function(I,J,q,C)local K=h.Cosmetics[q]if K and K.Type=="Skin"then return true end return false end h.OwnsCosmeticForWeapon=function(I,J,q,C)local K=h.Cosmetics[q]if K and K.Type=="Skin"then return true end return false end local L=h.OwnsCosmetic h.OwnsCosmetic=function(I,J,q,C)if q:find("MISSING_")then return L(I,J,q,C)end local K=h.Cosmetics[q]if K and K.Type=="Skin"then return true end return L(I,J,q,C)end local M=j.Get j.Get=function(I,N)local O=M(I,N)if N=="CosmeticInventory"then local P={}if O then for Q,R in pairs(O)do local K=h.Cosmetics[Q]if K and K.Type=="Skin"then P[Q]=R end end end return setmetatable(P,{__index=function(S,Q)local K=h.Cosmetics[Q]if K and K.Type=="Skin"then return true end return nil end})end if N=="FavoritedCosmetics"then local T=O and table.clone(O)or{}for C,U in pairs(l)do T[C]=T[C]or{}for q,V in pairs(U)do local K=h.Cosmetics[q]if K and K.Type=="Skin"then T[C][q]=V end end end return T end return O end local W=j.GetWeaponData j.GetWeaponData=function(I,C)local X=W(I,C)if not X then return nil end local Y={}for v,w in pairs(X)do Y[v]=w end Y.Name=C if k[C]then for E,F in pairs(k[C])do if E=="Skin"then Y[E]=F end end end return Y end local Z pcall(function()Z=require(f:WaitForChild("FighterController",10))end)if hookmetamethod then local _=b:FindFirstChild("Remotes")local a0=_ and _:FindFirstChild("Data")local a1=a0 and a0:FindFirstChild("EquipCosmetic")local a2=a0 and a0:FindFirstChild("FavoriteCosmetic")local a3=_ and _:FindFirstChild("Replication")local a4=a3 and a3:FindFirstChild("Fighter")local a5=a4 and a4:FindFirstChild("UseItem")if a1 then local a6 a6=hookmetamethod(game,"__namecall",function(I,...)if getnamecallmethod()~="FireServer"then return a6(I,...)end local a7={...}if a5 and I==a5 then local a8=a7[1]if Z then pcall(function()local a9=Z:GetFighter(d)if a9 and a9.Items then for _,ba in pairs(a9.Items)do if ba:Get("ObjectID")==a8 then o=ba.Name break end end end end)end end if I==a1 then local C,E,q,bb=a7[1],a7[2],a7[3],a7[4]or{}if E~="Skin"then return a6(I,...)end if q and q~="None"and q~=""then local bc=j:Get("CosmeticInventory")if bc and rawget(bc,q)then return a6(I,...)end end k[C]=k[C]or{}if not q or q=="None"or q==""then k[C][E]=nil if not next(k[C])then k[C]=nil end else local bd=p(q,E,{inverted=bb.IsInverted,favoritesOnly=bb.OnlyUseFavorites})if bd then k[C][E]=bd end end task.defer(function()pcall(function()j.CurrentData:Replicate("WeaponInventory")end)task.wait(0.2)A()end)return end if I==a2 then local K=h.Cosmetics[a7[2]]if K and K.Type=="Skin"then l[a7[1]]=l[a7[1]]or{}l[a7[1]][a7[2]]=a7[3]or nil A()task.spawn(function()pcall(function()j.CurrentData:Replicate("FavoritedCosmetics")end)end)end return end return a6(I,...)end)end end local be pcall(function()be=require(d.PlayerScripts.Modules.ClientReplicatedClasses.ClientFighter.ClientItem)end)if be and be._CreateViewModel then local bf=be._CreateViewModel be._CreateViewModel=function(I,bg)local C=I.Name local bh=I.ClientFighter and I.ClientFighter.Player m=(bh==d)and C or nil if bh==d and k[C]and k[C].Skin and bg then local bi,bj,bk=I:ToEnum("Data"),I:ToEnum("Skin"),I:ToEnum("Name")if bg[bi]then bg[bi][bj]=k[C].Skin bg[bi][bk]=k[C].Skin.Name elseif bg.Data then bg.Data.Skin=k[C].Skin bg.Data.Name=k[C].Skin.Name end end local bl=bf(I,bg)m=nil return bl end end local bm=d.PlayerScripts.Modules.ClientReplicatedClasses.ClientFighter.ClientItem:FindFirstChild("ClientViewModel")if bm then local bn=require(bm)local bo=bn.new bn.new=function(bp,bq)local br=bq.ClientFighter and bq.ClientFighter.Player local C=m or bq.Name if br==d and k[C]then local bs=require(b.Modules.ReplicatedClass)local bt=bs:ToEnum("Data")bp[bt]=bp[bt]or{}local bu=k[C]if bu.Skin then bp[bt][bs:ToEnum("Skin")]=bu.Skin end end local bv=bo(bp,bq)return bv end end local bw=i.GetViewModelImageFromWeaponData i.GetViewModelImageFromWeaponData=function(I,bx,by)if not bx then return bw(I,bx,by)end local C=bx.Name local bz=(bx.Skin and k[C]and bx.Skin==k[C].Skin)or(n==d and k[C]and k[C].Skin)if bz and k[C]and k[C].Skin then local bA=I.ViewModels[k[C].Skin.Name]if bA then return bA[by and"ImageHighResolution"or"Image"]or bA.Image end end return bw(I,bx,by)end local bB=h.OwnsCosmetic h.OwnsCosmetic=function(I,J,q,C)if q:find("MISSING_")then return bB(I,J,q,C)end local K=h.Cosmetics[q]if K and(K.Type=="Charm"or q:lower():find("charm"))then return true end return bB(I,J,q,C)end local bC=j.Get j.Get=function(I,N)local O=bC(I,N)if N=="CosmeticInventory"then local P={}if O then for Q,R in pairs(O)do local K=h.Cosmetics[Q]if K and(K.Type=="Charm"or Q:lower():find("charm"))then P[Q]=R end end end return setmetatable(P,{__index=function(S,Q)local K=h.Cosmetics[Q]if K and(K.Type=="Charm"or Q:lower():find("charm"))then return true end return nil end})end if N=="FavoritedCosmetics"then local T=O and table.clone(O)or{}for C,U in pairs(l)do T[C]=T[C]or{}for q,V in pairs(U)do local K=h.Cosmetics[q]if K and(K.Type=="Charm"or q:lower():find("charm"))then T[C][q]=V end end end return T end return O end if hookmetamethod then local _=b:FindFirstChild("Remotes")local a0=_ and _:FindFirstChild("Data")local a1=a0 and a0:FindFirstChild("EquipCosmetic")local a2=a0 and a0:FindFirstChild("FavoriteCosmetic")if a1 then local a6 a6=hookmetamethod(game,"__namecall",function(I,...)if getnamecallmethod()~="FireServer"then return a6(I,...)end local a7={...}if I==a1 then local C,E,q,bb=a7[1],a7[2],a7[3],a7[4]or{}if E~="Charm"then return a6(I,...)end if q and q~="None"and q~=""then local bc=j:Get("CosmeticInventory")if bc and rawget(bc,q)then return a6(I,...)end end k[C]=k[C]or{}if not q or q=="None"or q==""then k[C][E]=nil if not next(k[C])then k[C]=nil end else local bd=p(q,E,{inverted=bb.IsInverted,favoritesOnly=bb.OnlyUseFavorites})if bd then k[C][E]=bd end end task.defer(function()pcall(function()j.CurrentData:Replicate("WeaponInventory")end)task.wait(0.2)A()end)return end if I==a2 then local K=h.Cosmetics[a7[2]]if K and(K.Type=="Charm"or a7[2]:lower():find("charm"))then l[a7[1]]=l[a7[1]]or{}l[a7[1]][a7[2]]=a7[3]or nil A()task.spawn(function()pcall(function()j.CurrentData:Replicate("FavoritedCosmetics")end)end)end return end return a6(I,...)end)end end if be and be._CreateViewModel then local bD=be._CreateViewModel be._CreateViewModel=function(I,bg)local C=I.Name local bh=I.ClientFighter and I.ClientFighter.Player m=(bh==d)and C or nil if bh==d and k[C]and k[C].Charm and bg then local bi,bj,bk=I:ToEnum("Data"),I:ToEnum("Charm"),I:ToEnum("Name")if bg[bi]then bg[bi][bj]=k[C].Charm bg[bi][bk]=k[C].Charm.Name elseif bg.Data then bg.Data.Charm=k[C].Charm bg.Data.Name=k[C].Charm.Name end end local bl=bD(I,bg)m=nil return bl end end if bm then local bn=require(bm)if bn.GetCharm then local bE=bn.GetCharm bn.GetCharm=function(I)local C=I.ClientItem and I.ClientItem.Name local bh=I.ClientItem and I.ClientItem.ClientFighter and I.ClientItem.ClientFighter.Player if C and bh==d and k[C]and k[C].Charm then return k[C].Charm end return bE(I)end end local bF=bn.new bn.new=function(bp,bq)local bh=bq.ClientFighter and bq.ClientFighter.Player local C=m or bq.Name if bh==d and k[C]then local bs=require(b.Modules.ReplicatedClass)local bt=bs:ToEnum("Data")bp[bt]=bp[bt]or{}local bu=k[C]if bu.Charm then bp[bt][bs:ToEnum("Charm")]=bu.Charm end end local bv=bF(bp,bq)return bv end end local bG=h.OwnsCosmetic h.OwnsCosmetic=function(I,J,q,C)if q:find("MISSING_")then return bG(I,J,q,C)end local K=h.Cosmetics[q]if K and(K.Type=="Dance"or K.Type=="Emote"or q:lower():find("dance")or q:lower():find("emote"))then return true end return bG(I,J,q,C)end local bH=j.Get j.Get=function(I,N)local O=bH(I,N)if N=="CosmeticInventory"then local P={}if O then for Q,R in pairs(O)do local K=h.Cosmetics[Q]if K and(K.Type=="Dance"or K.Type=="Emote"or Q:lower():find("dance")or Q:lower():find("emote"))then P[Q]=R end end end return setmetatable(P,{__index=function(S,Q)local K=h.Cosmetics[Q]if K and(K.Type=="Dance"or K.Type=="Emote"or Q:lower():find("dance")or Q:lower():find("emote"))then return true end return nil end})end if N=="FavoritedCosmetics"then local T=O and table.clone(O)or{}for C,U in pairs(l)do T[C]=T[C]or{}for q,V in pairs(U)do local K=h.Cosmetics[q]if K and(K.Type=="Dance"or K.Type=="Emote"or q:lower():find("dance")or q:lower():find("emote"))then T[C][q]=V end end end return T end return O end if hookmetamethod then local _=b:FindFirstChild("Remotes")local a0=_ and _:FindFirstChild("Data")local a1=a0 and a0:FindFirstChild("EquipCosmetic")local a2=a0 and a0:FindFirstChild("FavoriteCosmetic")if a1 then local a6 a6=hookmetamethod(game,"__namecall",function(I,...)if getnamecallmethod()~="FireServer"then return a6(I,...)end local a7={...}if I==a1 then local C,E,q,bb=a7[1],a7[2],a7[3],a7[4]or{}if E=="Dance"or E=="Emote"or(q and(q:lower():find("dance")or q:lower():find("emote")))then k.Dances=k.Dances or{}if not q or q=="None"or q==""then k.Dances[E]=nil else local bd=p(q,E,{inverted=bb.IsInverted,favoritesOnly=bb.OnlyUseFavorites})if bd then k.Dances[E]=bd end end task.defer(function()pcall(function()j.CurrentData:Replicate("CosmeticInventory")end)task.wait(0.2)A()end)return end return a6(I,...)end if I==a2 then local K=h.Cosmetics[a7[2]]if K and(K.Type=="Dance"or K.Type=="Emote"or a7[2]:lower():find("dance")or a7[2]:lower():find("emote"))then l[a7[1]]=l[a7[1]]or{}l[a7[1]][a7[2]]=a7[3]or nil A()task.spawn(function()pcall(function()j.CurrentData:Replicate("FavoritedCosmetics")end)end)end return end return a6(I,...)end)end end local bI pcall(function()bI=require(f:WaitForChild("EmoteController",10))if bI and bI.GetEmotes then local bJ=bI.GetEmotes bI.GetEmotes=function(I)local bK=bJ(I)for q,K in pairs(h.Cosmetics)do if K and(K.Type=="Dance"or K.Type=="Emote"or q:lower():find("dance")or q:lower():find("emote"))then if not bK[q]then bK[q]={Name=q,Type=K.Type,ObjectID=K.ObjectID,Enum=K.Enum}end end end return bK end end end)local bL=h.OwnsCosmetic h.OwnsCosmetic=function(I,J,q,C)if q:find("MISSING_")then return bL(I,J,q,C)end local K=h.Cosmetics[q]if K and(K.Type=="Wrap"or K.Type=="Wrapping"or q:lower():find("wrap"))then return true end return bL(I,J,q,C)end local bM=j.Get j.Get=function(I,N)local O=bM(I,N)if N=="CosmeticInventory"then local P={}if O then for Q,R in pairs(O)do local K=h.Cosmetics[Q]if K and(K.Type=="Wrap"or K.Type=="Wrapping"or Q:lower():find("wrap"))then P[Q]=R end end end return setmetatable(P,{__index=function(S,Q)local K=h.Cosmetics[Q]if K and(K.Type=="Wrap"or K.Type=="Wrapping"or Q:lower():find("wrap"))then return true end return nil end})end if N=="FavoritedCosmetics"then local T=O and table.clone(O)or{}for C,U in pairs(l)do T[C]=T[C]or{}for q,V in pairs(U)do local K=h.Cosmetics[q]if K and(K.Type=="Wrap"or K.Type=="Wrapping"or q:lower():find("wrap"))then T[C][q]=V end end end return T end return O end if hookmetamethod then local _=b:FindFirstChild("Remotes")local a0=_ and _:FindFirstChild("Data")local a1=a0 and a0:FindFirstChild("EquipCosmetic")local a2=a0 and a0:FindFirstChild("FavoriteCosmetic")if a1 then local a6 a6=hookmetamethod(game,"__namecall",function(I,...)if getnamecallmethod()~="FireServer"then return a6(I,...)end local a7={...}if I==a1 then local C,E,q,bb=a7[1],a7[2],a7[3],a7[4]or{}if E~="Wrap"and E~="Wrapping"then return a6(I,...)end if q and q~="None"and q~=""then local bc=j:Get("CosmeticInventory")if bc and rawget(bc,q)then return a6(I,...)end end k[C]=k[C]or{}if not q or q=="None"or q==""then k[C][E]=nil if not next(k[C])then k[C]=nil end else local bd=p(q,E,{inverted=bb.IsInverted,favoritesOnly=bb.OnlyUseFavorites})if bd then k[C][E]=bd end end task.defer(function()pcall(function()j.CurrentData:Replicate("WeaponInventory")end)task.wait(0.2)A()end)return end if I==a2 then local K=h.Cosmetics[a7[2]]if K and(K.Type=="Wrap"or K.Type=="Wrapping"or a7[2]:lower():find("wrap"))then l[a7[1]]=l[a7[1]]or{}l[a7[1]][a7[2]]=a7[3]or nil A()task.spawn(function()pcall(function()j.CurrentData:Replicate("FavoritedCosmetics")end)end)end return end return a6(I,...)end)end end if be and be._CreateViewModel then local bN=be._CreateViewModel be._CreateViewModel=function(I,bg)local C=I.Name local bh=I.ClientFighter and I.ClientFighter.Player m=(bh==d)and C or nil if bh==d and k[C]and k[C].Wrap and bg then local bi,bj,bk=I:ToEnum("Data"),I:ToEnum("Wrap"),I:ToEnum("Name")if bg[bi]then bg[bi][bj]=k[C].Wrap bg[bi][bk]=k[C].Wrap.Name elseif bg.Data then bg.Data.Wrap=k[C].Wrap bg.Data.Name=k[C].Wrap.Name end end local bl=bN(I,bg)m=nil return bl end end if bm then local bn=require(bm)if bn.GetWrap then local bO=bn.GetWrap bn.GetWrap=function(I)local C=I.ClientItem and I.ClientItem.Name local bh=I.ClientItem and I.ClientItem.ClientFighter and I.ClientItem.ClientFighter.Player if C and bh==d and k[C]and k[C].Wrap then return k[C].Wrap end return bO(I)end end local bP=bn.new bn.new=function(bp,bq)local bh=bq.ClientFighter and bq.ClientFighter.Player local C=m or bq.Name if bh==d and k[C]then local bs=require(b.Modules.ReplicatedClass)local bt=bs:ToEnum("Data")bp[bt]=bp[bt]or{}local bu=k[C]if bu.Wrap then bp[bt][bs:ToEnum("Wrap")]=bu.Wrap end end local bv=bP(bp,bq)if bh==d and k[C]and k[C].Wrap and bv._UpdateWrap then bv:_UpdateWrap()task.delay(0.1,function()if not bv._destroyed then bv:_UpdateWrap()end end)end return bv end end pcall(function()local bQ=require(d.PlayerScripts.Modules.Pages.ViewProfile)if bQ and bQ.Fetch then local bR=bQ.Fetch bQ.Fetch=function(I,bS)n=bS return bR(I,bS)end end end)G()
-end
-
--- [ 模塊 4：UI 渲染引擎 (含防護 GUI) ] --------------------------------
+-- [ UI 渲染引擎 ]
 local screenGui = Instance.new("ScreenGui"); screenGui.Name = "XingHuiHub"; screenGui.ResetOnSpawn = false
--- [防護 3] GUI 保護 
-pcall(function() if syn and syn.protect_gui then syn.protect_gui(screenGui) end end)
 pcall(function() screenGui.Parent = CoreGui end)
 if not screenGui.Parent then screenGui.Parent = LocalPlayer:WaitForChild("PlayerGui") end
 _G.MyUI = screenGui
 
-local Colors = { BgGradient1 = Color3.fromRGB(40, 0, 80), BgGradient2 = Color3.fromRGB(0, 20, 80), Stroke = Color3.fromRGB(255, 0, 0), TextMain = Color3.fromRGB(240, 240, 255), TextSub = Color3.fromRGB(180, 180, 220), Accent = Color3.fromRGB(255, 50, 80), ToggleOn = Color3.fromRGB(150, 50, 255), ToggleOff = Color3.fromRGB(80, 80, 100) }
+local Colors = {
+    BgGradient1 = Color3.fromRGB(40, 0, 80), BgGradient2 = Color3.fromRGB(0, 20, 80),
+    Stroke = Color3.fromRGB(255, 0, 0), TextMain = Color3.fromRGB(240, 240, 255),
+    TextSub = Color3.fromRGB(180, 180, 220), Accent = Color3.fromRGB(255, 50, 80),
+    ToggleOn = Color3.fromRGB(150, 50, 255), ToggleOff = Color3.fromRGB(80, 80, 100)
+}
 
-local mainFrame = Instance.new("Frame", screenGui); mainFrame.Size = UDim2.new(0, 550, 0, 380); mainFrame.Position = UDim2.new(0.5, -275, 0.5, -190); mainFrame.BackgroundColor3 = Color3.fromRGB(255, 255, 255); mainFrame.BorderSizePixel = 0; mainFrame.ClipsDescendants = true; mainFrame.Visible = false
+local mainFrame = Instance.new("Frame", screenGui)
+mainFrame.Size = UDim2.new(0, 550, 0, 380); mainFrame.Position = UDim2.new(0.5, -275, 0.5, -190)
+mainFrame.BackgroundColor3 = Color3.fromRGB(255, 255, 255); mainFrame.BorderSizePixel = 0
+mainFrame.ClipsDescendants = true; mainFrame.Visible = false
 Instance.new("UICorner", mainFrame).CornerRadius = UDim.new(0, 10)
-local bgGradient = Instance.new("UIGradient", mainFrame); bgGradient.Color = ColorSequence.new{ColorSequenceKeypoint.new(0, Colors.BgGradient1), ColorSequenceKeypoint.new(1, Colors.BgGradient2)}; bgGradient.Rotation = 45
-local mainStroke = Instance.new("UIStroke", mainFrame); mainStroke.Thickness = 2; mainStroke.Color = Colors.Stroke
 
-local topBar = Instance.new("Frame", mainFrame); topBar.Size = UDim2.new(1, 0, 0, 40); topBar.BackgroundTransparency = 1
+local bgGradient = Instance.new("UIGradient", mainFrame)
+bgGradient.Color = ColorSequence.new{ColorSequenceKeypoint.new(0, Colors.BgGradient1), ColorSequenceKeypoint.new(1, Colors.BgGradient2)}
+bgGradient.Rotation = 45
+
+local mainStroke = Instance.new("UIStroke", mainFrame)
+mainStroke.Thickness = 2; mainStroke.Color = Colors.Stroke
+
+local topBar = Instance.new("Frame", mainFrame)
+topBar.Size = UDim2.new(1, 0, 0, 40); topBar.BackgroundTransparency = 1
 local dragging, dragInput, dragStart, startPos
-topBar.InputBegan:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then dragging = true; dragStart = input.Position; startPos = mainFrame.Position; input.Changed:Connect(function() if input.UserInputState == Enum.UserInputState.End then dragging = false end end) end end)
-topBar.InputChanged:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then dragInput = input end end)
-UserInputService.InputChanged:Connect(function(input) if input == dragInput and dragging then local delta = input.Position - dragStart; mainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y) end end)
+topBar.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true; dragStart = input.Position; startPos = mainFrame.Position
+        input.Changed:Connect(function() if input.UserInputState == Enum.UserInputState.End then dragging = false end end)
+    end
+end)
+topBar.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then dragInput = input end
+end)
+UserInputService.InputChanged:Connect(function(input)
+    if input == dragInput and dragging then
+        local delta = input.Position - dragStart
+        mainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    end
+end)
 
-local titleText = Instance.new("TextLabel", topBar); titleText.Size = UDim2.new(0, 300, 1, 0); titleText.Position = UDim2.new(0, 15, 0, 0); titleText.BackgroundTransparency = 1; titleText.Text = "星輝 (XingHui) V7 - 終極防禦版"; titleText.Font = Enum.Font.GothamBold; titleText.TextSize = 16; titleText.TextColor3 = Colors.TextMain; titleText.TextXAlignment = Enum.TextXAlignment.Left
+local titleText = Instance.new("TextLabel", topBar)
+titleText.Size = UDim2.new(0, 300, 1, 0); titleText.Position = UDim2.new(0, 15, 0, 0)
+titleText.BackgroundTransparency = 1; titleText.Text = "星輝 V2 - 环形传送版"
+titleText.Font = Enum.Font.GothamBold; titleText.TextSize = 16; titleText.TextColor3 = Colors.TextMain
+titleText.TextXAlignment = Enum.TextXAlignment.Left
 
-local leftPanel = Instance.new("Frame", mainFrame); leftPanel.Size = UDim2.new(0, 140, 1, -40); leftPanel.Position = UDim2.new(0, 0, 0, 40); leftPanel.BackgroundTransparency = 1
-local tabContainer = Instance.new("Frame", leftPanel); tabContainer.Size = UDim2.new(1, 0, 1, -70); tabContainer.Position = UDim2.new(0, 0, 0, 10); tabContainer.BackgroundTransparency = 1
-local tabListLayout = Instance.new("UIListLayout", tabContainer); tabListLayout.SortOrder = Enum.SortOrder.LayoutOrder; tabListLayout.Padding = UDim.new(0, 10); tabListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-local tabIndicator = Instance.new("Frame", leftPanel); tabIndicator.Size = UDim2.new(0, 4, 0, 25); tabIndicator.Position = UDim2.new(0, 5, 0, 15); tabIndicator.BackgroundColor3 = Colors.Accent; tabIndicator.BorderSizePixel = 0; Instance.new("UICorner", tabIndicator).CornerRadius = UDim.new(1, 0)
-local rightPanel = Instance.new("Frame", mainFrame); rightPanel.Size = UDim2.new(1, -145, 1, -40); rightPanel.Position = UDim2.new(0, 145, 0, 40); rightPanel.BackgroundTransparency = 1
+local leftPanel = Instance.new("Frame", mainFrame)
+leftPanel.Size = UDim2.new(0, 140, 1, -40); leftPanel.Position = UDim2.new(0, 0, 0, 40)
+leftPanel.BackgroundTransparency = 1
+
+local tabContainer = Instance.new("Frame", leftPanel)
+tabContainer.Size = UDim2.new(1, 0, 1, -70); tabContainer.Position = UDim2.new(0, 0, 0, 10)
+tabContainer.BackgroundTransparency = 1
+local tabListLayout = Instance.new("UIListLayout", tabContainer)
+tabListLayout.SortOrder = Enum.SortOrder.LayoutOrder; tabListLayout.Padding = UDim.new(0, 10); tabListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+
+local tabIndicator = Instance.new("Frame", leftPanel)
+tabIndicator.Size = UDim2.new(0, 4, 0, 25); tabIndicator.Position = UDim2.new(0, 5, 0, 15)
+tabIndicator.BackgroundColor3 = Colors.Accent; tabIndicator.BorderSizePixel = 0
+Instance.new("UICorner", tabIndicator).CornerRadius = UDim.new(1, 0)
+
+local rightPanel = Instance.new("Frame", mainFrame)
+rightPanel.Size = UDim2.new(1, -145, 1, -40); rightPanel.Position = UDim2.new(0, 145, 0, 40)
+rightPanel.BackgroundTransparency = 1
 
 local pages = {}
 local function CreateTab(name)
-    local btn = Instance.new("TextButton", tabContainer); btn.Size = UDim2.new(1, -20, 0, 35); btn.BackgroundTransparency = 1; btn.Text = name; btn.Font = Enum.Font.GothamBold; btn.TextSize = 14; btn.TextColor3 = Colors.TextSub
-    local page = Instance.new("ScrollingFrame", rightPanel); page.Size = UDim2.new(1, -10, 1, -10); page.BackgroundTransparency = 1; page.ScrollBarThickness = 2; page.Visible = false
-    local layout = Instance.new("UIListLayout", page); layout.SortOrder = Enum.SortOrder.LayoutOrder; layout.Padding = UDim.new(0, 8); layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function() page.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y + 20) end)
-    btn.MouseButton1Click:Connect(function() for _, p in pairs(pages) do p.Page.Visible = false; p.Btn.TextColor3 = Colors.TextSub end; page.Visible = true; btn.TextColor3 = Colors.TextMain; TweenService:Create(tabIndicator, TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {Position = UDim2.new(0, 5, 0, btn.AbsolutePosition.Y - tabContainer.AbsolutePosition.Y + 5)}):Play() end)
+    local btn = Instance.new("TextButton", tabContainer)
+    btn.Size = UDim2.new(1, -20, 0, 35); btn.BackgroundTransparency = 1
+    btn.Text = name; btn.Font = Enum.Font.GothamBold; btn.TextSize = 14; btn.TextColor3 = Colors.TextSub
+    local page = Instance.new("ScrollingFrame", rightPanel)
+    page.Size = UDim2.new(1, -10, 1, -10); page.BackgroundTransparency = 1; page.ScrollBarThickness = 2
+    page.Visible = false
+    local layout = Instance.new("UIListLayout", page)
+    layout.SortOrder = Enum.SortOrder.LayoutOrder; layout.Padding = UDim.new(0, 8)
+    layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function() page.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y + 20) end)
+    btn.MouseButton1Click:Connect(function()
+        for _, p in pairs(pages) do p.Page.Visible = false; p.Btn.TextColor3 = Colors.TextSub end
+        page.Visible = true; btn.TextColor3 = Colors.TextMain
+        TweenService:Create(tabIndicator, TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {Position = UDim2.new(0, 5, 0, btn.AbsolutePosition.Y - tabContainer.AbsolutePosition.Y + 5)}):Play()
+    end)
     table.insert(pages, {Btn = btn, Page = page}); return page
 end
 
 local function CreateToggle(parent, text, defaultState, hotkeyInfo, callback)
-    local frame = Instance.new("Frame", parent); frame.Size = UDim2.new(1, -10, 0, 40); frame.BackgroundColor3 = Color3.fromRGB(20, 20, 40); frame.BackgroundTransparency = 0.5; Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 8)
-    local label = Instance.new("TextLabel", frame); label.Size = UDim2.new(1, -60, 1, 0); label.Position = UDim2.new(0, 15, 0, 0); label.BackgroundTransparency = 1; label.Text = text .. (hotkeyInfo and (" ["..hotkeyInfo.."]") or ""); label.Font = Enum.Font.GothamBold; label.TextSize = 13; label.TextColor3 = Colors.TextMain; label.TextXAlignment = Enum.TextXAlignment.Left
-    local toggleBtn = Instance.new("TextButton", frame); toggleBtn.Size = UDim2.new(0, 40, 0, 20); toggleBtn.Position = UDim2.new(1, -55, 0.5, -10); toggleBtn.BackgroundColor3 = defaultState and Colors.ToggleOn or Colors.ToggleOff; toggleBtn.Text = ""; Instance.new("UICorner", toggleBtn).CornerRadius = UDim.new(1, 0)
-    local circle = Instance.new("Frame", toggleBtn); circle.Size = UDim2.new(0, 16, 0, 16); circle.Position = UDim2.new(defaultState and 1 or 0, defaultState and -18 or 2, 0.5, -8); circle.BackgroundColor3 = Color3.fromRGB(255, 255, 255); Instance.new("UICorner", circle).CornerRadius = UDim.new(1, 0)
+    local frame = Instance.new("Frame", parent)
+    frame.Size = UDim2.new(1, -10, 0, 40); frame.BackgroundColor3 = Color3.fromRGB(20, 20, 40); frame.BackgroundTransparency = 0.5
+    Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 8)
+    local label = Instance.new("TextLabel", frame)
+    label.Size = UDim2.new(1, -60, 1, 0); label.Position = UDim2.new(0, 15, 0, 0)
+    label.BackgroundTransparency = 1; label.Text = text .. (hotkeyInfo and (" ["..hotkeyInfo.."]") or "")
+    label.Font = Enum.Font.GothamBold; label.TextSize = 13; label.TextColor3 = Colors.TextMain; label.TextXAlignment = Enum.TextXAlignment.Left
+    local toggleBtn = Instance.new("TextButton", frame)
+    toggleBtn.Size = UDim2.new(0, 40, 0, 20); toggleBtn.Position = UDim2.new(1, -55, 0.5, -10)
+    toggleBtn.BackgroundColor3 = defaultState and Colors.ToggleOn or Colors.ToggleOff; toggleBtn.Text = ""
+    Instance.new("UICorner", toggleBtn).CornerRadius = UDim.new(1, 0)
+    local circle = Instance.new("Frame", toggleBtn)
+    circle.Size = UDim2.new(0, 16, 0, 16); circle.Position = UDim2.new(defaultState and 1 or 0, defaultState and -18 or 2, 0.5, -8)
+    circle.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    Instance.new("UICorner", circle).CornerRadius = UDim.new(1, 0)
     local state = defaultState
-    local function fireToggle() state = not state; callback(state); TweenService:Create(toggleBtn, TweenInfo.new(0.2), {BackgroundColor3 = state and Colors.ToggleOn or Colors.ToggleOff}):Play(); TweenService:Create(circle, TweenInfo.new(0.2), {Position = UDim2.new(state and 1 or 0, state and -18 or 2, 0.5, -8)}):Play() end
+    local function fireToggle()
+        state = not state; callback(state)
+        TweenService:Create(toggleBtn, TweenInfo.new(0.2), {BackgroundColor3 = state and Colors.ToggleOn or Colors.ToggleOff}):Play()
+        TweenService:Create(circle, TweenInfo.new(0.2), {Position = UDim2.new(state and 1 or 0, state and -18 or 2, 0.5, -8)}):Play()
+    end
     toggleBtn.MouseButton1Click:Connect(fireToggle)
     return function(newState) if state ~= newState then fireToggle() end end
 end
 
 local function CreateSlider(parent, text, min, max, default, callback)
-    local frame = Instance.new("Frame", parent); frame.Size = UDim2.new(1, -10, 0, 50); frame.BackgroundColor3 = Color3.fromRGB(20, 20, 40); frame.BackgroundTransparency = 0.5; Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 8)
-    local label = Instance.new("TextLabel", frame); label.Size = UDim2.new(1, -20, 0, 20); label.Position = UDim2.new(0, 15, 0, 5); label.BackgroundTransparency = 1; label.Text = text .. " : " .. default; label.Font = Enum.Font.GothamBold; label.TextSize = 12; label.TextColor3 = Colors.TextMain; label.TextXAlignment = Enum.TextXAlignment.Left
-    local track = Instance.new("TextButton", frame); track.Size = UDim2.new(1, -30, 0, 6); track.Position = UDim2.new(0, 15, 0, 30); track.BackgroundColor3 = Color3.fromRGB(100, 100, 120); track.Text = ""; track.AutoButtonColor = false; Instance.new("UICorner", track).CornerRadius = UDim.new(1, 0)
-    local fill = Instance.new("Frame", track); fill.Size = UDim2.new((default - min) / (max - min), 0, 1, 0); fill.BackgroundColor3 = Colors.Accent; Instance.new("UICorner", fill).CornerRadius = UDim.new(1, 0)
+    local frame = Instance.new("Frame", parent)
+    frame.Size = UDim2.new(1, -10, 0, 50); frame.BackgroundColor3 = Color3.fromRGB(20, 20, 40); frame.BackgroundTransparency = 0.5
+    Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 8)
+    local label = Instance.new("TextLabel", frame)
+    label.Size = UDim2.new(1, -20, 0, 20); label.Position = UDim2.new(0, 15, 0, 5)
+    label.BackgroundTransparency = 1; label.Text = text .. " : " .. default
+    label.Font = Enum.Font.GothamBold; label.TextSize = 12; label.TextColor3 = Colors.TextMain; label.TextXAlignment = Enum.TextXAlignment.Left
+    local track = Instance.new("TextButton", frame)
+    track.Size = UDim2.new(1, -30, 0, 6); track.Position = UDim2.new(0, 15, 0, 30)
+    track.BackgroundColor3 = Color3.fromRGB(100, 100, 120); track.Text = ""; track.AutoButtonColor = false
+    Instance.new("UICorner", track).CornerRadius = UDim.new(1, 0)
+    local fill = Instance.new("Frame", track)
+    fill.Size = UDim2.new((default - min) / (max - min), 0, 1, 0); fill.BackgroundColor3 = Colors.Accent
+    Instance.new("UICorner", fill).CornerRadius = UDim.new(1, 0)
     local dragging = false
-    local function update(input) local pct = math.clamp((input.Position.X - track.AbsolutePosition.X) / track.AbsoluteSize.X, 0, 1); fill.Size = UDim2.new(pct, 0, 1, 0); local val = math.floor(min + (max - min) * pct); label.Text = text .. " : " .. val; callback(val) end
+    local function update(input)
+        local pct = math.clamp((input.Position.X - track.AbsolutePosition.X) / track.AbsoluteSize.X, 0, 1)
+        fill.Size = UDim2.new(pct, 0, 1, 0)
+        local val = math.floor(min + (max - min) * pct)
+        label.Text = text .. " : " .. val; callback(val)
+    end
     track.InputBegan:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then dragging = true; update(input) end end)
     track.InputEnded:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then dragging = false end end)
     UserInputService.InputChanged:Connect(function(input) if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then update(input) end end)
 end
 
-local function CreateButton(parent, text, hotkey, callback)
-    local btn = Instance.new("TextButton", parent); btn.Size = UDim2.new(1, -10, 0, 35); btn.BackgroundColor3 = Color3.fromRGB(20, 20, 40); btn.BackgroundTransparency = 0.5; btn.TextColor3 = Colors.TextMain; btn.Font = Enum.Font.GothamBold; btn.TextSize = 13; btn.Text = text .. (hotkey and " ["..hotkey.."]" or ""); Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 8); btn.MouseButton1Click:Connect(callback)
-    return btn
-end
+-- 生成 UI 内容
+local PageCombat = CreateTab("攻击 (Combat)")
+local PageMove = CreateTab("移动 (Movement)")
+local PageVisual = CreateTab("辅助 (Visuals)")
 
-local PageCombat = CreateTab("攻擊 (Combat)")
-local PageMove = CreateTab("移動 (Movement)")
-local PageVisual = CreateTab("輔助 (Visuals)")
-local PageAdvanced = CreateTab("高級 (Advanced)") 
-
--- [高級]
-local toggleSilentUI = CreateToggle(PageAdvanced, "靜默瞄準 (子彈追蹤)", Config.isSilent, "L", function(v) 
-    if v and not State.SupportSilent then warn("[防護系統] 執行器不支援靜默"); Config.isSilent = false; return end
-    Config.isSilent = v 
+-- [攻击]
+local toggleAimbot = CreateToggle(PageCombat, "平滑飘移自瞄", Config.isAimbot, "F", function(v)
+    Config.isAimbot = v
+    if FOVCircle then FOVCircle.Color = v and Color3.fromRGB(255, 0, 0) or Color3.fromRGB(0, 255, 255) end
 end)
-local toggleWeaponUI = CreateToggle(PageAdvanced, "速彈無後座 (拿槍生效)", Config.isWeapon, "J", function(v) 
-    if v and not State.SupportWeapon then warn("[防護系統] 執行器不支援改槍"); Config.isWeapon = false; return end
-    Config.isWeapon = v 
-end)
-local toggleWallbangUI = CreateToggle(PageAdvanced, "神級穿牆 (Desync)", Config.isWallbang, "K", function(v) 
-    if v and not State.SupportWallbang then warn("[防護系統] 執行器不支援穿牆"); Config.isWallbang = false; return end
-    Config.isWallbang = v
-    if not v and _G.WallbangSys and _G.WallbangSys.Desyncing then
-        if _G.WallbangSys.DSC then _G.WallbangSys.DSC:Disconnect(); _G.WallbangSys.DSC = nil end
-        _G.WallbangSys.Desyncing = false
-    end
-end)
+CreateSlider(PageCombat, "锁定部位 (0=身,100=头)", 0, 100, Config.HeadshotChance, function(v) Config.HeadshotChance = v end)
+CreateSlider(PageCombat, "视觉范围 (FOV)", 50, 1000, Config.FOV, function(v) Config.FOV = v; if FOVCircle then FOVCircle.Radius = v end end)
+CreateSlider(PageCombat, "AI平滑拟真度", 1, 20, Config.Smoothness, function(v) Config.Smoothness = v end)
+CreateSlider(PageCombat, "橘圈飘移半径", 0, 150, Config.DriftRadius, function(v) Config.DriftRadius = v end)
+local toggleTrigger = CreateToggle(PageCombat, "死神自动扳机", Config.isTriggerBot, "T", function(v) Config.isTriggerBot = v end)
+CreateSlider(PageCombat, "扳机连发延迟(ms)", 10, 200, Config.TriggerDelay * 1000, function(v) Config.TriggerDelay = v / 1000 end)
 
-local unlockBtn = CreateButton(PageAdvanced, "全皮膚/飾品解鎖 (點擊執行)", nil, function()
-    if State.UnlockExecuted then warn("[星輝系統] 全皮膚解鎖已執行過！") return end
-    print("[星輝系統] 正在啟動沙盒執行全皮膚解鎖...")
-    local s, e = pcall(ExecuteUnlockAll)
-    if s then 
-        State.UnlockExecuted = true
-        print("[星輝系統] 全皮膚解鎖成功！")
-    else 
-        warn("[沙盒防護] 執行器權限不足或遊戲更新，已攔截錯誤以保護系統運行。")
-    end
-end)
--- 按鈕點擊後變色邏輯
-unlockBtn.MouseButton1Click:Connect(function()
-    if State.UnlockExecuted then
-        unlockBtn.Text = "全皮膚已解鎖"
-        TweenService:Create(unlockBtn, TweenInfo.new(0.3), {BackgroundColor3 = Color3.fromRGB(0, 150, 50)}):Play()
-    else
-        unlockBtn.Text = "解鎖失敗 (支援度不足)"
-        TweenService:Create(unlockBtn, TweenInfo.new(0.3), {BackgroundColor3 = Color3.fromRGB(150, 0, 0)}):Play()
-        task.delay(2, function() unlockBtn.Text = "全皮膚/飾品解鎖 (點擊執行)"; TweenService:Create(unlockBtn, TweenInfo.new(0.3), {BackgroundColor3 = Color3.fromRGB(20, 20, 40)}):Play() end)
-    end
-end)
+-- [移动]
+local teleportSlider = CreateSlider(PageMove, "传送扫描距离", 1, 50, Config.TeleportDistance, function(v) Config.TeleportDistance = v end)
+local toggleMagnet = CreateToggle(PageMove, "死神定位跟踪", Config.isMagnet, "V", function(v) Config.isMagnet = v end)
+CreateToggle(PageMove, "定位模式 (开=头上,关=背后)", Config.MagnetMode == "Above", nil, function(v) Config.MagnetMode = v and "Above" or "Behind" end)
+CreateSlider(PageMove, "瞬移定位距离", 1, 20, Config.MagnetDistance, function(v) Config.MagnetDistance = v end)
+local toggleVoid = CreateToggle(PageMove, "量子虚空待命", Config.isVoid, "X", function(v) Config.isVoid = v end)
+local toggleNoclip = CreateToggle(PageMove, "幽灵穿墙", Config.isNoclip, nil, function(v) Config.isNoclip = v end)
 
--- [攻擊]
-local toggleAimbotUI = CreateToggle(PageCombat, "平滑飄移自瞄", Config.isAimbot, "F", function(v) Config.isAimbot = v; if FOVCircle then FOVCircle.Color = v and Color3.fromRGB(255, 0, 0) or Color3.fromRGB(0, 255, 255) end end)
-CreateSlider(PageCombat, "鎖定部位 (0=身, 100=頭)", 0, 100, Config.HeadshotChance, function(v) Config.HeadshotChance = v end)
-CreateSlider(PageCombat, "視覺範圍 (FOV)", 50, 1000, Config.FOV, function(v) Config.FOV = v; if FOVCircle then FOVCircle.Radius = v end end)
-CreateSlider(PageCombat, "AI 平滑擬真度", 1, 20, Config.Smoothness, function(v) Config.Smoothness = v end)
-CreateSlider(PageCombat, "橘圈飄移半徑", 0, 150, Config.DriftRadius, function(v) Config.DriftRadius = v end)
-local toggleTriggerUI = CreateToggle(PageCombat, "死神自動扳機", Config.isTriggerBot, "T", function(v) Config.isTriggerBot = v end)
-
--- [移動]
-local toggleSpeedUI = CreateToggle(PageMove, "移動加速 (Speed Hack)", Config.isSpeed, nil, function(v) Config.isSpeed = v end)
-CreateSlider(PageMove, "加速數值", 16, 200, Config.SpeedValue, function(v) Config.SpeedValue = v end)
-local toggleInfJumpUI = CreateToggle(PageMove, "連續跳躍 (Inf Jump)", Config.isInfJump, nil, function(v) Config.isInfJump = v end)
-local toggleFlyUI = CreateToggle(PageMove, "無重力飛天", Config.isFly, "C", function(v) Config.isFly = v end)
-CreateSlider(PageMove, "飛天速度", 50, 1000, Config.FlySpeed, function(v) Config.FlySpeed = v end)
-local toggleMagnetUI = CreateToggle(PageMove, "死神定位跟蹤", Config.isMagnet, "V", function(v) Config.isMagnet = v end)
-CreateToggle(PageMove, "定位模式 (開=頭上, 關=背後)", Config.MagnetMode == "Above", nil, function(v) Config.MagnetMode = v and "Above" or "Behind" end)
-CreateSlider(PageMove, "瞬移定位距離", 1, 20, Config.MagnetDistance, function(v) Config.MagnetDistance = v end)
-local toggleVoidUI = CreateToggle(PageMove, "量子虛空待命", Config.isVoid, "X", function(v) Config.isVoid = v end)
-local toggleNoclipUI = CreateToggle(PageMove, "幽靈穿牆", Config.isNoclip, nil, function(v) Config.isNoclip = v end)
-
--- [輔助]
-local toggleESPUI = CreateToggle(PageVisual, "全圖透視總開關", Config.isESP, nil, function(v) Config.isESP = v end)
-local toggleFullBrightUI = CreateToggle(PageVisual, "夜視除霧系統", Config.isFullBright, "Y", function(v) Config.isFullBright = v end)
+-- [辅助]
+local toggleESP = CreateToggle(PageVisual, "全图透视总开关", Config.isESP, nil, function(v) Config.isESP = v end)
+local toggleFullBright = CreateToggle(PageVisual, "夜视除雾系统", Config.isFullBright, "Y", function(v) Config.isFullBright = v end)
 
 local function updateXray(state)
     Config.isXray = state
     if state then
         task.spawn(function()
-            local count = 0; local parts = workspace:GetDescendants()
+            local count = 0
+            local parts = workspace:GetDescendants()
             for i = 1, #parts do
-                if not Config.isXray then return end; local obj = parts[i]
+                if not Config.isXray then return end
+                local obj = parts[i]
                 if obj:IsA("BasePart") and not obj.Parent:FindFirstChild("Humanoid") and obj.Name ~= "HumanoidRootPart" then
-                    if State.originalTransparencies[obj] == nil then State.originalTransparencies[obj] = obj.Transparency end; obj.Transparency = 0.5
+                    if State.originalTransparencies[obj] == nil then State.originalTransparencies[obj] = obj.Transparency end
+                    obj.Transparency = 0.5
                 end
-                count = count + 1; if count % 800 == 0 then task.wait() end 
+                count = count + 1
+                if count % 800 == 0 then task.wait() end
             end
         end)
         State.xrayConnection = workspace.DescendantAdded:Connect(function(obj)
             if Config.isXray and obj:IsA("BasePart") and not obj.Parent:FindFirstChild("Humanoid") and obj.Name ~= "HumanoidRootPart" then
-                task.wait(0.1); if State.originalTransparencies[obj] == nil then State.originalTransparencies[obj] = obj.Transparency end; obj.Transparency = 0.5
+                task.wait(0.1)
+                if State.originalTransparencies[obj] == nil then State.originalTransparencies[obj] = obj.Transparency end
+                obj.Transparency = 0.5
             end
         end)
     else
         if State.xrayConnection then State.xrayConnection:Disconnect(); State.xrayConnection = nil end
         task.spawn(function()
             local count = 0
-            for obj, trans in pairs(State.originalTransparencies) do 
-                if Config.isXray then return end; if obj and obj.Parent then obj.Transparency = trans end; count = count + 1; if count % 800 == 0 then task.wait() end
+            for obj, trans in pairs(State.originalTransparencies) do
+                if Config.isXray then return end
+                if obj and obj.Parent then obj.Transparency = trans end
+                count = count + 1
+                if count % 800 == 0 then task.wait() end
             end
             State.originalTransparencies = {}
         end)
     end
 end
-local toggleXrayUI = CreateToggle(PageVisual, "地圖物件透視 (X光)", Config.isXray, "P", function(v) updateXray(v) end)
+local toggleXray = CreateToggle(PageVisual, "地图物件透视 (X光)", Config.isXray, "P", function(v) updateXray(v) end)
 
-local function toggleProtectTarget()
+local function CreateButton(parent, text, hotkey, callback)
+    local btn = Instance.new("TextButton", parent)
+    btn.Size = UDim2.new(1, -10, 0, 35); btn.BackgroundColor3 = Color3.fromRGB(20, 20, 40); btn.BackgroundTransparency = 0.5
+    btn.TextColor3 = Colors.TextMain; btn.Font = Enum.Font.GothamBold; btn.TextSize = 13
+    btn.Text = text .. (hotkey and " ["..hotkey.."]" or "")
+    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 8)
+    btn.MouseButton1Click:Connect(callback)
+end
+CreateButton(PageVisual, "保护/取消 准心目标", "Z", function()
     local centerPos = Camera.ViewportSize / 2; local closest = nil; local dist = Config.FOV
     for _, p in ipairs(Players:GetPlayers()) do
         if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("Head") then
             local pos, onScreen = Camera:WorldToViewportPoint(p.Character.Head.Position)
             if onScreen then
-                local d = (Vector2.new(pos.X, pos.Y) - centerPos).Magnitude; if d < dist then dist = d; closest = p end
+                local d = (Vector2.new(pos.X, pos.Y) - centerPos).Magnitude
+                if d < dist then dist = d; closest = p end
             end
         end
     end
-    if closest then State.ignoredPlayers[closest.UserId] = not State.ignoredPlayers[closest.UserId]; print("目標 " .. closest.Name .. (State.ignoredPlayers[closest.UserId] and " 已保護" or " 已解除")) end
-end
-CreateButton(PageVisual, "保護/取消 準心目標", "Z", toggleProtectTarget)
+    if closest then
+        State.ignoredPlayers[closest.UserId] = not State.ignoredPlayers[closest.UserId]
+        print("目标 " .. closest.Name .. (State.ignoredPlayers[closest.UserId] and " 已保护" or " 已解除"))
+    end
+end)
 
 pages[1].Btn.TextColor3 = Colors.TextMain; pages[1].Page.Visible = true
 
-
-if isMobile or UserInputService.TouchEnabled then
+-- 手机按钮
+if isMobile then
     local mobileBtn = Instance.new("TextButton", screenGui)
-    mobileBtn.Size = UDim2.new(0, 55, 0, 55)
-    mobileBtn.Position = UDim2.new(0, 10, 0.5, -27)  
-    mobileBtn.BackgroundColor3 = Color3.fromRGB(25, 0, 50)
-    mobileBtn.BackgroundTransparency = 0.1
-    mobileBtn.Text = "星"
-    mobileBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    mobileBtn.TextSize = 28
+    mobileBtn.Size = UDim2.new(0, 60, 0, 60)
+    mobileBtn.Position = UDim2.new(1, -70, 1, -70)
+    mobileBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 50)
+    mobileBtn.BackgroundTransparency = 0.2
+    mobileBtn.Text = "☰"
+    mobileBtn.TextColor3 = Colors.TextMain
+    mobileBtn.TextSize = 30
+    mobileBtn.Font = Enum.Font.GothamBold
     Instance.new("UICorner", mobileBtn).CornerRadius = UDim.new(1, 0)
-    local btnStroke = Instance.new("UIStroke", mobileBtn)
-    btnStroke.Thickness = 2; btnStroke.Color = Colors.Accent
-    
-    local dragging, dragStart, btnStart
+
+    local btnDragging, btnDragStart, btnStartPos
     mobileBtn.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.Touch then
-            dragging = true; dragStart = input.Position; btnStart = mobileBtn.Position
-            input.Changed:Connect(function() if input.UserInputState == Enum.UserInputState.End then dragging = false end end)
+            btnDragging = true
+            btnDragStart = input.Position
+            btnStartPos = mobileBtn.Position
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then btnDragging = false end
+            end)
         end
     end)
     mobileBtn.InputChanged:Connect(function(input)
-        if dragging and input.UserInputType == Enum.UserInputType.Touch then
-            local delta = input.Position - dragStart
-            mobileBtn.Position = UDim2.new(btnStart.X.Scale, btnStart.X.Offset + delta.X, btnStart.Y.Scale, btnStart.Y.Offset + delta.Y)
+        if btnDragging and input.UserInputType == Enum.UserInputType.Touch then
+            local delta = input.Position - btnDragStart
+            mobileBtn.Position = UDim2.new(btnStartPos.X.Scale, btnStartPos.X.Offset + delta.X, btnStartPos.Y.Scale, btnStartPos.Y.Offset + delta.Y)
         end
     end)
+
     mobileBtn.MouseButton1Click:Connect(function() mainFrame.Visible = not mainFrame.Visible end)
     mobileBtn.TouchTap:Connect(function() mainFrame.Visible = not mainFrame.Visible end)
 end
 
--- [ 模塊 5：目標偵測系統 ] --------------------------------
+-- [ 目标检测系统 ]
 local function isVisible(targetPart)
     if not targetPart then return false end
-    local origin = Camera.CFrame.Position; local direction = (targetPart.Position - origin)
-    local rayParams = RaycastParams.new(); rayParams.FilterDescendantsInstances = {LocalPlayer.Character, Camera}; rayParams.FilterType = Enum.RaycastFilterType.Exclude; rayParams.IgnoreWater = true
+    local origin = Camera.CFrame.Position
+    local direction = (targetPart.Position - origin)
+    local rayParams = RaycastParams.new()
+    rayParams.FilterDescendantsInstances = {LocalPlayer.Character, Camera}
+    rayParams.FilterType = Enum.RaycastFilterType.Exclude
+    rayParams.IgnoreWater = true
     local result = workspace:Raycast(origin, direction, rayParams)
     if result then return result.Instance:IsDescendantOf(targetPart.Parent) end
-    return true 
+    return true
 end
 
 local function isValidTarget(char)
@@ -426,7 +392,7 @@ local function isValidTarget(char)
     if not p or State.ignoredPlayers[p.UserId] then return false end
     local _, onScreen = Camera:WorldToViewportPoint(head.Position)
     if not onScreen then return false end
-    return isVisible(head) 
+    return isVisible(head)
 end
 
 local function getClosestToCenter()
@@ -436,8 +402,9 @@ local function getClosestToCenter()
             local head = p.Character:FindFirstChild("Head"); local hum = p.Character:FindFirstChild("Humanoid")
             if head and hum and hum.Health > 0 then
                 local pos, onScreen = Camera:WorldToViewportPoint(head.Position)
-                if onScreen and isVisible(head) then 
-                    local dist = (Vector2.new(pos.X, pos.Y) - centerPos).Magnitude; if dist < shortestDist then shortestDist = dist; closestChar = p.Character end
+                if onScreen and isVisible(head) then
+                    local dist = (Vector2.new(pos.X, pos.Y) - centerPos).Magnitude
+                    if dist < shortestDist then shortestDist = dist; closestChar = p.Character end
                 end
             end
         end
@@ -451,39 +418,38 @@ local function getClosestEnemy()
         if p ~= LocalPlayer and p.Character and not State.ignoredPlayers[p.UserId] then
             local root = p.Character:FindFirstChild("HumanoidRootPart"); local hum = p.Character:FindFirstChild("Humanoid")
             if root and hum and hum.Health > 0 then
-                local dist = (root.Position - Camera.CFrame.Position).Magnitude; if dist < closestDist then closestDist = dist; closestChar = p.Character end
+                local dist = (root.Position - Camera.CFrame.Position).Magnitude
+                if dist < closestDist then closestDist = dist; closestChar = p.Character end
             end
         end
     end
     return closestChar
 end
 
--- [ 模塊 6：渲染與觸發系統 ] --------------------------------
+-- [ 自瞄与扳机 ]
 _G.MyTargetCacheLoop = RunService.RenderStepped:Connect(function()
     if Config.isFullBright then Lighting.ClockTime = 12; Lighting.FogEnd = 100000; Lighting.GlobalShadows = false; Lighting.Ambient = Color3.fromRGB(255, 255, 255) end
     if FOVCircle then FOVCircle.Position = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2) end
 
-    if Config.isAimbot or Config.isSilent then
+    if Config.isAimbot then
         if not isValidTarget(State.silentAimTarget) then State.silentAimTarget = getClosestToCenter() end
-        
         if State.silentAimTarget and State.silentAimTarget:FindFirstChild("Head") then
             if math.random(1, 100) <= Config.HeadshotChance then State.currentAimPart = "Head" else State.currentAimPart = "HumanoidRootPart" end
-            
             local headPos = State.silentAimTarget.Head.Position
             local screenPos, onScreen = Camera:WorldToViewportPoint(headPos)
-            if onScreen and DriftCircle and Config.isAimbot then
+            if onScreen and DriftCircle then
                 DriftCircle.Visible = true; DriftCircle.Position = Vector2.new(screenPos.X, screenPos.Y); DriftCircle.Radius = Config.DriftRadius
             elseif DriftCircle then DriftCircle.Visible = false end
-            
             if tick() - State.driftTimer > 0.05 then
-                State.driftTimer = tick(); local r = math.random() * Config.DriftRadius; local theta = math.random() * math.pi * 2
+                State.driftTimer = tick()
+                local r = math.random() * Config.DriftRadius; local theta = math.random() * math.pi * 2
                 State.targetDrift = Vector2.new(r * math.cos(theta), r * math.sin(theta))
             end
             State.driftOffset = State.driftOffset:Lerp(State.targetDrift, 0.4)
         else
             if DriftCircle then DriftCircle.Visible = false end
         end
-    else 
+    else
         State.silentAimTarget = nil; if DriftCircle then DriftCircle.Visible = false end
     end
 end)
@@ -495,10 +461,12 @@ RunService:BindToRenderStep("MyMouseAimLoop", Enum.RenderPriority.Last.Value, fu
         if onScreen then
             local finalTarget2D = Vector2.new(targetPos.X, targetPos.Y) + State.driftOffset
             if mousemoverel and not isMobile then
-                local center = Camera.ViewportSize / 2; local moveX = (finalTarget2D.X - center.X) / Config.Smoothness; local moveY = (finalTarget2D.Y - center.Y) / Config.Smoothness
+                local center = Camera.ViewportSize / 2
+                local moveX = (finalTarget2D.X - center.X) / Config.Smoothness; local moveY = (finalTarget2D.Y - center.Y) / Config.Smoothness
                 pcall(function() mousemoverel(moveX + math.random(-1,1)*0.2, moveY + math.random(-1,1)*0.2) end)
             else
-                local dist = (targetPartPos - Camera.CFrame.Position).Magnitude; local ray = Camera:ScreenPointToRay(finalTarget2D.X, finalTarget2D.Y)
+                local dist = (targetPartPos - Camera.CFrame.Position).Magnitude
+                local ray = Camera:ScreenPointToRay(finalTarget2D.X, finalTarget2D.Y)
                 Camera.CFrame = Camera.CFrame:Lerp(CFrame.lookAt(Camera.CFrame.Position, ray.Origin + ray.Direction * dist), 1 / (Config.Smoothness * 0.5))
             end
         end
@@ -510,135 +478,220 @@ RunService:BindToRenderStep("MyMouseAimLoop", Enum.RenderPriority.Last.Value, fu
             local char = t:FindFirstAncestorOfClass("Model")
             if char and char:FindFirstChild("Humanoid") and char ~= LocalPlayer.Character and not State.ignoredPlayers[Players:GetPlayerFromCharacter(char) and Players:GetPlayerFromCharacter(char).UserId] then
                 if tick() - State.lastClickTime > Config.TriggerDelay then
-                    State.lastClickTime = tick(); if mouse1click then pcall(mouse1click) end
+                    State.lastClickTime = tick()
+                    if mouse1click then pcall(mouse1click) end
                 end
             end
         end
     end
 end)
 
--- [ 模塊 7：連跳與物理推進系統 ] --------------------------------
-_G.MyJumpLoop = UserInputService.JumpRequest:Connect(function()
-    if Config.isInfJump then
-        local char = LocalPlayer.Character
-        if char then
-            local hum = char:FindFirstChildOfClass("Humanoid")
-            if hum then hum:ChangeState(Enum.HumanoidStateType.Jumping) end
-        end
-    end
-end)
-
+-- [ 物理系统 (磁力/虚空/穿墙) ]
 _G.MyPhysicsLoop = RunService.Stepped:Connect(function()
-    local char = LocalPlayer.Character; local hrp = char and char:FindFirstChild("HumanoidRootPart"); local hum = char and char:FindFirstChild("Humanoid")
+    local char = LocalPlayer.Character
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    local hum = char and char:FindFirstChild("Humanoid")
     if not hrp or not hum or hum.Health <= 0 then return end
 
-    if Config.isSpeed and hum.MoveDirection.Magnitude > 0 then
-        hrp.CFrame = hrp.CFrame + (hum.MoveDirection * (Config.SpeedValue / 100))
+    if Config.isNoclip then
+        for _, p in ipairs(char:GetDescendants()) do if p:IsA("BasePart") then p.CanCollide = false end end
     end
 
-    if Config.isNoclip then for _, p in ipairs(char:GetDescendants()) do if p:IsA("BasePart") then p.CanCollide = false end end end
-    
-    if Config.isFly or Config.isMagnet or Config.isVoid then
+    if Config.isMagnet or Config.isVoid then
         for _, p in ipairs(char:GetDescendants()) do if p:IsA("BasePart") then p.AssemblyAngularVelocity = Vector3.new(0,0,0) end end
     end
 
     if Config.isVoid then
         if not State.hasSavedCFrame then State.safeCFrame = hrp.CFrame; State.hasSavedCFrame = true end
-        hrp.CFrame = CFrame.new(voidPlatforms[1] + Vector3.new(0, 5, 0)); hrp.AssemblyLinearVelocity = Vector3.new(0,0,0); return
+        hrp.CFrame = CFrame.new(voidPlatforms[1] + Vector3.new(0, 5, 0))
+        hrp.AssemblyLinearVelocity = Vector3.new(0,0,0); return
     else
         if State.hasSavedCFrame and State.safeCFrame then hrp.CFrame = State.safeCFrame; State.hasSavedCFrame = false end
     end
 
     if Config.isMagnet then
-        local enemy = getClosestEnemy() 
+        local enemy = getClosestEnemy()
         if enemy and enemy:FindFirstChild("HumanoidRootPart") then
             local tHrp = enemy.HumanoidRootPart
-            if Config.MagnetMode == "Above" then hrp.CFrame = CFrame.new(tHrp.Position + Vector3.new(0, Config.MagnetDistance, 0)) else hrp.CFrame = CFrame.new(tHrp.Position + (tHrp.CFrame.LookVector * -Config.MagnetDistance)) end
-            hrp.CFrame = CFrame.lookAt(hrp.Position, tHrp.Position); hrp.AssemblyLinearVelocity = Vector3.new(0,0,0); return
+            if Config.MagnetMode == "Above" then
+                hrp.CFrame = CFrame.new(tHrp.Position + Vector3.new(0, Config.MagnetDistance, 0))
+            else
+                hrp.CFrame = CFrame.new(tHrp.Position + (tHrp.CFrame.LookVector * -Config.MagnetDistance))
+            end
+            hrp.CFrame = CFrame.lookAt(hrp.Position, tHrp.Position)
+            hrp.AssemblyLinearVelocity = Vector3.new(0,0,0); return
         end
-    end
-
-    if Config.isFly then
-        local md = Vector3.new(0,0,0)
-        if UserInputService:IsKeyDown(Enum.KeyCode.W) then md = md + Camera.CFrame.LookVector end
-        if UserInputService:IsKeyDown(Enum.KeyCode.S) then md = md - Camera.CFrame.LookVector end
-        if UserInputService:IsKeyDown(Enum.KeyCode.A) then md = md - Camera.CFrame.RightVector end
-        if UserInputService:IsKeyDown(Enum.KeyCode.D) then md = md + Camera.CFrame.RightVector end
-        if UserInputService:IsKeyDown(Enum.KeyCode.Space) then md = md + Vector3.new(0,1,0) end
-        if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) then md = md - Vector3.new(0,1,0) end
-        if hum.MoveDirection.Magnitude > 0 then md = md + hum.MoveDirection end
-        hrp.AssemblyLinearVelocity = md.Magnitude > 0 and (md.Unit * Config.FlySpeed) or Vector3.new(0,0,0)
     end
 end)
 
--- [ 模塊 8：ESP 戰術透視系統 ] --------------------------------
+-- [ ESP 透视系统 ]
 local chamsFolder = Instance.new("Folder", workspace); chamsFolder.Name = "MyMobileESP"; _G.MyChamsFolder = chamsFolder
 _G.MyESPLoop = RunService.Heartbeat:Connect(function()
+    if not Config.isESP then
+        for _, n in ipairs(chamsFolder:GetChildren()) do n:Destroy() end
+        for _, v in ipairs(screenGui:GetChildren()) do if v.Name:match("^ToolESP_") then v:Destroy() end end
+        return
+    end
     pcall(function()
-        if not Config.isESP then
-            for _, n in ipairs(chamsFolder:GetChildren()) do n:Destroy() end
-            for _, v in ipairs(screenGui:GetChildren()) do if v.Name:match("^ToolESP_") then v:Destroy() end end; return
-        end
         for _, n in ipairs(chamsFolder:GetChildren()) do
             local p = Players:FindFirstChild(n.Name)
-            if not p or State.ignoredPlayers[p.UserId] or not p.Character or not p.Character:FindFirstChild("Humanoid") or p.Character.Humanoid.Health<=0 then 
-                n:Destroy(); local g = screenGui:FindFirstChild("ToolESP_"..n.Name); if g then g:Destroy() end
+            if not p or State.ignoredPlayers[p.UserId] or not p.Character or not p.Character:FindFirstChild("Humanoid") or p.Character.Humanoid.Health <= 0 then
+                n:Destroy()
+                local g = screenGui:FindFirstChild("ToolESP_"..n.Name)
+                if g then g:Destroy() end
             end
         end
         for _, p in ipairs(Players:GetPlayers()) do
             if p == LocalPlayer or State.ignoredPlayers[p.UserId] then continue end
-            local char = p.Character; local hum = char and char:FindFirstChild("Humanoid"); local hrp = char and char:FindFirstChild("HumanoidRootPart")
-            if char and hrp and hum and hum.Health > 0 then
-                local node = chamsFolder:FindFirstChild(p.Name); local col = p.Team and p.TeamColor.Color or Color3.fromRGB(255, 0, 0)
-                if not node then node = Instance.new("Folder", chamsFolder); node.Name = p.Name; local b = Instance.new("BoxHandleAdornment", node); b.Name = "B"; b.Adornee = hrp; b.AlwaysOnTop = true; b.ZIndex = 10; b.Size = Vector3.new(4,5.5,2); b.Transparency = 0.6; b.Color3 = col
-                else local b = node:FindFirstChild("B"); if b then b.Adornee = hrp; b.Color3 = col end end
-                
-                local gui = screenGui:FindFirstChild("ToolESP_"..p.Name)
-                if not gui then gui = Instance.new("BillboardGui", screenGui); gui.Name = "ToolESP_"..p.Name; gui.Size = UDim2.new(0,250,0,70); gui.StudsOffset = Vector3.new(0,4.5,0); gui.AlwaysOnTop = true; gui.MaxDistance = math.huge; local txt = Instance.new("TextLabel", gui); txt.Name = "L"; txt.Size = UDim2.new(1,0,1,0); txt.BackgroundTransparency = 1; txt.TextStrokeTransparency = 0; txt.Font = Enum.Font.GothamBold; txt.TextSize = 13; txt.RichText = true; txt.Text = "" end
-                gui.Adornee = hrp; local txt = gui:FindFirstChild("L")
-                if txt then
-                    local hp, maxHp = math.floor(hum.Health), math.floor(hum.MaxHealth); local hpCol = hp/maxHp < 0.35 and "#FF0000" or (hp/maxHp < 0.75 and "#FFFF00" or "#00FF00")
-                    local tStr = '<font color="#888888">[ 空手 ]</font>'; local tool = char:FindFirstChildOfClass("Tool")
-                    if tool then tStr = '<font color="#00FFFF">[ '..tool.Name..' ]</font>' else local bp = p:FindFirstChild("Backpack"); local ht = {}; if bp then for _,i in ipairs(bp:GetChildren()) do if i:IsA("Tool") then table.insert(ht, i.Name) end end end; if #ht>0 then tStr = '<font color="#FFA500">[ '..ht[1]..' ]</font>' end end
-                    txt.Text = string.format('<font color="#FFFFFF">%s</font>\n%s\n<font color="%s">[ ♥ %d/%d ]</font>', p.DisplayName, tStr, hpCol, hp, maxHp)
+            local char = p.Character
+            local hum = char and char:FindFirstChild("Humanoid")
+            local hrp = char and char:FindFirstChild("HumanoidRootPart")
+            if not (char and hrp and hum and hum.Health > 0) then continue end
+            local node = chamsFolder:FindFirstChild(p.Name)
+            local col = p.Team and p.TeamColor.Color or Color3.fromRGB(255, 0, 0)
+            if not node then
+                node = Instance.new("Folder", chamsFolder); node.Name = p.Name
+                local b = Instance.new("BoxHandleAdornment", node); b.Name = "B"; b.Adornee = hrp; b.AlwaysOnTop = true
+                b.ZIndex = 10; b.Size = Vector3.new(4,5.5,2); b.Transparency = 0.6; b.Color3 = col
+            else
+                local b = node:FindFirstChild("B")
+                if b then b.Adornee = hrp; b.Color3 = col end
+            end
+            local gui = screenGui:FindFirstChild("ToolESP_"..p.Name)
+            if not gui then
+                gui = Instance.new("BillboardGui", screenGui); gui.Name = "ToolESP_"..p.Name
+                gui.Size = UDim2.new(0,250,0,70); gui.StudsOffset = Vector3.new(0,4.5,0)
+                gui.AlwaysOnTop = true; gui.MaxDistance = math.huge
+                local txt = Instance.new("TextLabel", gui); txt.Name = "L"
+                txt.Size = UDim2.new(1,0,1,0); txt.BackgroundTransparency = 1
+                txt.TextStrokeTransparency = 0; txt.Font = Enum.Font.GothamBold
+                txt.TextSize = 13; txt.RichText = true; txt.Text = ""
+            end
+            gui.Adornee = hrp
+            local txt = gui:FindFirstChild("L")
+            if txt then
+                local hp, maxHp = math.floor(hum.Health), math.floor(hum.MaxHealth)
+                local hpCol = hp/maxHp < 0.35 and "#FF0000" or (hp/maxHp < 0.75 and "#FFFF00" or "#00FF00")
+                local tStr = '<font color="#888888">[ 空手 ]</font>'
+                local tool = char:FindFirstChildOfClass("Tool")
+                if tool then tStr = '<font color="#00FFFF">[ '..tool.Name..' ]</font>'
+                else
+                    local bp = p:FindFirstChild("Backpack"); local ht = {}
+                    if bp then for _,i in ipairs(bp:GetChildren()) do if i:IsA("Tool") then table.insert(ht, i.Name) end end end
+                    if #ht>0 then tStr = '<font color="#FFA500">[ '..ht[1]..' ]</font>' end
                 end
+                txt.Text = string.format('<font color="#FFFFFF">%s</font>\n%s\n<font color="%s">[ ♥ %d/%d ]</font>', p.DisplayName, tStr, hpCol, hp, maxHp)
             end
         end
     end)
 end)
 
--- [ 模塊 9：熱鍵控制器與重生接軌 ] --------------------------------
+
+
+local function FindGroundBelow(point)
+    local rayParams = RaycastParams.new()
+    rayParams.IgnoreWater = true
+    local downRay = workspace:Raycast(point + Vector3.new(0, 5, 0), Vector3.new(0, -20, 0), rayParams)
+    if downRay and (point.Y - downRay.Position.Y) <= 12 then
+        return downRay.Position + Vector3.new(0, 3, 0)
+    end
+    return nil
+end
+
+
+local function FindBestSpotAround(center, radius)
+    local bestSpot = nil
+    local bestHeight = -math.huge
+    local steps = 16  
+    for i = 0, steps-1 do
+        local angle = (i / steps) * math.pi * 2
+        local offset = Vector3.new(math.cos(angle) * radius, 0, math.sin(angle) * radius)
+        local testPoint = center + offset
+        local groundPoint = FindGroundBelow(testPoint)
+        if groundPoint then
+            if groundPoint.Y > bestHeight then
+                bestHeight = groundPoint.Y
+                bestSpot = groundPoint
+            end
+        end
+    end
+    return bestSpot
+end
+
+
+local function DoTeleport()
+    local char = LocalPlayer.Character
+    if not char then return end
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+    local origin = hrp.Position
+    local forward = Camera.CFrame.LookVector
+    local distance = Config.TeleportDistance
+    
+    
+    local baseTarget = origin + forward * distance
+    
+    
+    local bestSpot = nil
+    for radius = 2, 8, 2 do
+        bestSpot = FindBestSpotAround(baseTarget, radius)
+        if bestSpot then break end
+    end
+    
+    
+    if not bestSpot then
+        bestSpot = FindGroundBelow(baseTarget)
+    end
+    
+    
+    if not bestSpot then
+        local newPos = origin + forward * distance
+        hrp.CFrame = CFrame.new(newPos)
+        hrp.AssemblyLinearVelocity = Vector3.new(0,0,0)
+        print("[传送] 直线移动")
+        return
+    end
+    
+    
+    local rise = bestSpot.Y - origin.Y
+    if rise > 60 then
+        bestSpot = Vector3.new(bestSpot.X, origin.Y + 60, bestSpot.Z)
+        local groundCheck = FindGroundBelow(bestSpot)
+        if groundCheck then bestSpot = groundCheck end
+    end
+    
+    
+    hrp.CFrame = CFrame.new(bestSpot)
+    hrp.AssemblyLinearVelocity = Vector3.new(0,0,0)
+    local lookDir = Camera.CFrame.LookVector
+    hrp.CFrame = CFrame.lookAt(bestSpot, bestSpot + lookDir)
+    print("[传送] 环形扫描成功")
+end
+
+
 _G.MyActionBtns = UserInputService.InputBegan:Connect(function(input, gp)
     if gp then return end
     local k = input.KeyCode
-    if k == Enum.KeyCode.F and toggleAimbotUI then toggleAimbotUI(not Config.isAimbot)
-    elseif k == Enum.KeyCode.C and toggleFlyUI then toggleFlyUI(not Config.isFly)
-    elseif k == Enum.KeyCode.X and toggleVoidUI then toggleVoidUI(not Config.isVoid)
-    elseif k == Enum.KeyCode.V and toggleMagnetUI then toggleMagnetUI(not Config.isMagnet)
-    elseif k == Enum.KeyCode.P and toggleXrayUI then toggleXrayUI(not Config.isXray)
-    elseif k == Enum.KeyCode.T and toggleTriggerUI then toggleTriggerUI(not Config.isTriggerBot)
-    elseif k == Enum.KeyCode.Y and toggleFullBrightUI then toggleFullBrightUI(not Config.isFullBright)
-    elseif k == Enum.KeyCode.L and toggleSilentUI then toggleSilentUI(not Config.isSilent)
-    elseif k == Enum.KeyCode.J and toggleWeaponUI then toggleWeaponUI(not Config.isWeapon)
-    elseif k == Enum.KeyCode.K and toggleWallbangUI then toggleWallbangUI(not Config.isWallbang)
-    elseif k == Enum.KeyCode.Z then toggleProtectTarget() 
-    elseif k == Enum.KeyCode.G then mainFrame.Visible = not mainFrame.Visible 
+    if k == Enum.KeyCode.F then toggleAimbot(not Config.isAimbot)
+    elseif k == Enum.KeyCode.C then
+        DoTeleport()
+    elseif k == Enum.KeyCode.X then toggleVoid(not Config.isVoid)
+    elseif k == Enum.KeyCode.V then toggleMagnet(not Config.isMagnet)
+    elseif k == Enum.KeyCode.P then toggleXray(not Config.isXray)
+    elseif k == Enum.KeyCode.T then toggleTrigger(not Config.isTriggerBot)
+    elseif k == Enum.KeyCode.Y then toggleFullBright(not Config.isFullBright)
+    elseif k == Enum.KeyCode.G then mainFrame.Visible = not mainFrame.Visible
     end
 end)
+
 
 _G.MyCharRespawn = LocalPlayer.CharacterAdded:Connect(function()
+    Config.isMagnet = false
+    Config.isNoclip = false
+    Config.isAimbot = false
+    Config.isVoid = false
     State.silentAimTarget = nil
-    State.safeCFrame = nil
-    State.hasSavedCFrame = false
-    if _G.WallbangSys and _G.WallbangSys.Desyncing then
-        if _G.WallbangSys.DSC then _G.WallbangSys.DSC:Disconnect(); _G.WallbangSys.DSC = nil end
-        _G.WallbangSys.Desyncing = false
-    end
-    -- 防止 UI 元件因玩家死亡而報錯
-    pcall(function()
-        for _, v in ipairs(screenGui:GetChildren()) do if v.Name:match("^ToolESP_") then v:Destroy() end end
-        if _G.MyChamsFolder then _G.MyChamsFolder:ClearAllChildren() end
-    end)
+    for _, v in ipairs(screenGui:GetChildren()) do if v.Name:match("^ToolESP_") then v:Destroy() end end
 end)
 
-```
+print("星辉 V2 载入完成 | C键传送| 手机用户点右下角按钮")
